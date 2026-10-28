@@ -29,12 +29,38 @@ function fixFor(kind: IssueKind, m: PhotoMeta, s?: ImageStats) {
 describe("solveFix on the Sony α7 II", () => {
   it("brightens with the exposure dial in A, and raises ISO when the shutter would get too slow", () => {
     const { fix, steps } = fixFor("dark", meta(), stats(40));
+    // 1/30s × 8 is too slow even with the α7 II's stabilisation (about 1/12s at 50mm).
     expect(fix.changes).toEqual([
       { setting: "ev", from: undefined, to: 3 },
-      { setting: "iso", from: 100, to: 800 },
+      { setting: "iso", from: 100, to: 400 },
     ]);
-    expect(steps).toEqual(["Exposure dial to +3", "Press ISO on the wheel", "Turn the wheel to 800", "Press the center"]);
+    expect(steps).toEqual(["Exposure dial to +3", "Press ISO on the wheel", "Turn the wheel to 400", "Press the center"]);
     expect(fix.tradeOff).toMatch(/grain/);
+  });
+
+  it("never suggests a faster shutter for a dark photo", () => {
+    // M on a tripod: ISO already at the top, shutter already slower than hand-holdable.
+    const { fix } = fixFor("dark", meta({ mode: "manual", iso: 6400, exposureTime: 1 / 4 }), stats(40));
+    for (const c of fix.changes) {
+      if (c.setting === "shutter") expect(c.to).toBeGreaterThan(c.from ?? 0);
+      if (c.setting === "iso") expect(c.to).toBeGreaterThanOrEqual(c.from ?? 0);
+    }
+    expect(fix.changes.length).toBeGreaterThan(0);
+  });
+
+  it("gives a dark and grainy photo one plan that leaves ISO alone", () => {
+    const m = meta({ iso: 3200, exposureTime: 1 / 60 });
+    const guide = guideFor(m.device);
+    const both = ["dark", "grain"] as const;
+    const dark = solveFix(issue("dark"), m, stats(40), guide, [...both]);
+    const grain = solveFix(issue("grain"), m, stats(40), guide, [...both]);
+    expect(dark.changes).toEqual([{ setting: "ev", from: undefined, to: 3 }]);
+    expect(grain.changes).toEqual(dark.changes);
+    expect(grain.tradeOff).toMatch(/tripod/);
+
+    const manual = meta({ iso: 3200, exposureTime: 1 / 60, mode: "manual" });
+    const inM = solveFix(issue("grain"), manual, stats(40), guide, [...both]);
+    expect(inM.changes).toEqual([{ setting: "shutter", from: 1 / 60, to: 1 / 8 }]);
   });
 
   it("raises ISO in M, where the exposure dial does nothing", () => {

@@ -12,7 +12,7 @@ export type StoredPhoto = {
   format: PhotoFormat;
   /** Milliseconds since 1970, when the photo was added. Newest is shown first. */
   addedAt: number;
-  /** The file as picked, or null when the browser ran out of space and only the preview was kept. */
+  /** The file as picked, or null when the browser ran out of space and only a small copy was kept. */
   original: Blob | null;
   /**
    * What the app shows: "original" when the browser can show the file itself, a converted JPEG for
@@ -57,13 +57,21 @@ export async function loadPhotos(): Promise<StoredPhoto[]> {
   return all.sort((a, b) => b.addedAt - a.addedAt);
 }
 
-/** Saves a new photo. If the browser is out of space, tries again without the original file. */
-export async function savePhoto(photo: StoredPhoto): Promise<void> {
+/**
+ * Saves a new photo. If the browser is out of space, saves `smallCopy()` as its preview instead of
+ * the original file, so it can still be seen and checked. Resolves to whether the original was kept;
+ * rejects when nothing fits, or there is no small copy.
+ */
+export async function savePhoto(photo: StoredPhoto, smallCopy?: () => Promise<Blob | null>): Promise<boolean> {
   try {
     await run("readwrite", (s) => s.put(photo));
+    return true;
   } catch (e) {
-    if (!isQuotaError(e) || !photo.original) throw e;
-    await run("readwrite", (s) => s.put({ ...photo, original: null }));
+    if (!isQuotaError(e) || !photo.original || !smallCopy) throw e;
+    const small = await smallCopy();
+    if (!small) throw e;
+    await run("readwrite", (s) => s.put({ ...photo, original: null, preview: small }));
+    return false;
   }
 }
 

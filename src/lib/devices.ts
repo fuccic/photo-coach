@@ -10,6 +10,8 @@ export type Device = {
 
 type KnownDevice = Omit<Device, "supported"> & {
   match: (make: string, model: string) => boolean;
+  /** In-body stabilisation, which lets a camera be hand-held at slower shutter speeds. */
+  stabilized?: true;
 };
 
 // The MVP devices (see PLAN.md 3.1 and 3.2). Add new models here.
@@ -19,6 +21,7 @@ export const KNOWN_DEVICES: KnownDevice[] = [
     name: "Sony α7 II",
     kind: "camera",
     match: (make, model) => make.startsWith("SONY") && model === "ILCE-7M2",
+    stabilized: true,
   },
   {
     id: "apple-iphone-18-pro",
@@ -27,6 +30,11 @@ export const KNOWN_DEVICES: KnownDevice[] = [
     match: (make, model) => make.startsWith("APPLE") && model === "IPHONE 18 PRO",
   },
 ];
+
+/** True for supported cameras with in-body stabilisation. Looked up by id, so photos saved earlier get it too. */
+export function isStabilized(device: Device | null | undefined): boolean {
+  return !!device && KNOWN_DEVICES.some((d) => d.id === device.id && d.stabilized);
+}
 
 const PHONE_MAKES = ["APPLE", "GOOGLE", "SAMSUNG", "ONEPLUS", "XIAOMI", "HUAWEI", "MOTOROLA"];
 

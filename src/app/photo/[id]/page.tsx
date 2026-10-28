@@ -236,7 +236,7 @@ function Problems({
   onToggleWhy: () => void;
 }) {
   const selected = issues ? (issues[picked] ?? issues[0]) : undefined;
-  const solved = useFix(photo, selected);
+  const solved = useFix(photo, selected, issues);
 
   if (issues === undefined) {
     return (
