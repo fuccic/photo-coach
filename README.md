@@ -10,8 +10,8 @@ No jargon tests, no theory first. You learn from the photo you just took.
 
 1. **Take some photos** with your camera or phone. Bad ones are best: too dark, blurry, noisy.
 2. **Add them** to Photo Coach. Tap **Add a photo**, or on a computer drag them onto the page.
-3. **See your settings.** Each photo shows its shutter speed, aperture and ISO, plus the lens and mode.
-4. **Compare.** Put a sharp photo next to a blurry one and look at what changed. That's where the learning happens.
+3. **See what went wrong.** Each photo gets problem tiles like "Too dark" or "A bit blurry" (orange is a big problem, blue a small one). Tap **Why?** for the reason, and the ⊕ button on the photo to see where the problem is.
+4. **See your settings.** Each photo shows its shutter speed, aperture and ISO, plus the lens and mode.
 
 > Use the original file. Sending a photo through Messages, WhatsApp or social apps often strips its settings, and Photo Coach will say "No settings found". On iPhone, AirDrop it or export it with "All Photos Data" turned on.
 
@@ -39,7 +39,7 @@ A few rules of thumb to try:
 | Step | What you see | Status |
 |---|---|---|
 | Read settings | Shutter, aperture, ISO, lens and mode from each photo | ✅ Works now |
-| Spot problems | "Too dark", "A bit blurry", "Grainy" | 🔜 Next |
+| Spot problems | "Too dark", "Too bright", "A bit blurry", "Out of focus", "Grainy" | ✅ Works now |
 | Suggest a fix | `ISO 100 → ISO 800`, with a "Why?" in one sentence | 🔜 Next |
 | Show the buttons | Step-by-step on *your* camera: "Mode dial on A, press ISO on the wheel, turn to 800" | 🔜 Next |
 | Track progress | Your most common mistakes over time | Later |

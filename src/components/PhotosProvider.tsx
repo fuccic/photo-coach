@@ -1,6 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { analyzeImage } from "@/lib/analysis/analyzeImage";
+import type { ImageStats } from "@/lib/analysis/measure";
 import { readPhotoMeta, type PhotoMeta } from "@/lib/exif";
 import { detectFormat, type PhotoFormat } from "@/lib/fileTypes";
 import { makePreviewUrl } from "@/lib/preview";
@@ -13,6 +15,8 @@ export type Photo = {
   previewUrl?: string | null;
   /** undefined while the metadata is being read. */
   meta?: PhotoMeta;
+  /** Pixel measurements for the photo checks: undefined while measuring, null when it couldn't be read. */
+  stats?: ImageStats | null;
 };
 
 type PhotosContextValue = {
@@ -34,6 +38,19 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
     setPhotos((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }, []);
 
+  // Photos are measured one at a time (about 0.1s each) so a big batch doesn't freeze the page.
+  const queue = useRef(Promise.resolve());
+  const measureLater = useCallback(
+    (id: string, url: string | null) => {
+      if (!url) return update(id, { stats: null });
+      queue.current = queue.current.then(async () => {
+        await new Promise((r) => setTimeout(r));
+        update(id, { stats: await analyzeImage(url) });
+      });
+    },
+    [update],
+  );
+
   const addFiles = useCallback(
     (files: File[]) => {
       const added: Photo[] = files.map((file) => ({
@@ -47,11 +64,14 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
       added.forEach((photo, i) => {
         const file = files[i];
         readPhotoMeta(file).then((meta) => update(photo.id, { meta }));
-        makePreviewUrl(file).then((previewUrl) => update(photo.id, { previewUrl }));
+        makePreviewUrl(file).then((previewUrl) => {
+          update(photo.id, { previewUrl });
+          measureLater(photo.id, previewUrl);
+        });
       });
       return added.map((p) => p.id);
     },
-    [update],
+    [update, measureLater],
   );
 
   const value = useMemo(() => ({ photos, lastBatch, addFiles }), [photos, lastBatch, addFiles]);
