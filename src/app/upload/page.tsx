@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AddPhotosButton } from "@/components/AddPhotosButton";
 import { DeviceLabel } from "@/components/DeviceLabel";
 import { AlertIcon, PlusIcon } from "@/components/icons";
+import { IssueSummary } from "@/components/Issues";
 import { PhotoThumb } from "@/components/PhotoThumb";
 import { usePhotos } from "@/components/PhotosProvider";
 import { SettingChips } from "@/components/SettingChips";
@@ -49,6 +50,7 @@ export default function Upload() {
                   No settings found
                 </span>
               )}
+              <IssueSummary photo={p} />
             </div>
           </article>
         ))}

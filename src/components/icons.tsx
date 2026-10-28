@@ -78,3 +78,11 @@ export const AlertIcon = (p: IconProps) => (
     <circle cx="12" cy="12" r="9" />
   </Svg>
 );
+
+export const AreaIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M12 4v16M4 12h16" />
+  </Svg>
+);
+
