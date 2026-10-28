@@ -19,7 +19,7 @@ export default function Upload() {
       <TopBar
         back="/"
         right={
-          <AddPhotosButton label="Add more photos" className="flex size-11 items-center justify-center rounded-full bg-surface">
+          <AddPhotosButton label="Add more photos" className="flex size-11 md:hidden items-center justify-center rounded-full bg-surface">
             <PlusIcon />
           </AddPhotosButton>
         }
@@ -27,7 +27,7 @@ export default function Upload() {
         <h1 className="text-[22px] font-bold">{batch.length === 1 ? "1 photo" : `${batch.length} photos`}</h1>
       </TopBar>
 
-      <main className="flex grow flex-col gap-3 px-6 pt-2 pb-6">
+      <main className="flex grow flex-col gap-3 px-6 pt-2 pb-6 md:grid md:grow-0 md:grid-cols-2 md:content-start lg:grid-cols-3">
         {batch.length === 0 && (
           <AddPhotosButton className="flex h-40 flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-line text-muted">
             <PlusIcon size={32} />
@@ -55,11 +55,11 @@ export default function Upload() {
       </main>
 
       {batch.length > 0 && (
-        <div className="sticky bottom-0 bg-bg px-6 pt-2 pb-8">
+        <div className="sticky bottom-0 bg-bg px-6 pt-2 pb-8 md:static md:flex md:justify-end">
           <Link
             href={`/photo/${batch[0].id}`}
             aria-disabled={reading}
-            className={`flex min-h-14 items-center justify-center rounded-2xl bg-accent text-lg font-bold text-on-accent ${reading ? "pointer-events-none opacity-60" : ""}`}
+            className={`flex min-h-14 items-center justify-center rounded-2xl hover:bg-accent-ink md:w-72 bg-accent text-lg font-bold text-on-accent ${reading ? "pointer-events-none opacity-60" : ""}`}
           >
             Review
           </Link>

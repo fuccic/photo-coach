@@ -8,7 +8,7 @@ const TABS = [
 
 export function BottomNav({ current }: { current: "/" | "/library" }) {
   return (
-    <nav aria-label="Main" className="sticky bottom-0 flex justify-around border-t border-line bg-bg pt-2 pb-[max(24px,env(safe-area-inset-bottom))]">
+    <nav aria-label="Main" className="sticky bottom-0 flex md:hidden justify-around border-t border-line bg-bg pt-2 pb-[max(24px,env(safe-area-inset-bottom))]">
       {TABS.map(({ href, label, Icon }) => {
         const active = href === current;
         return (

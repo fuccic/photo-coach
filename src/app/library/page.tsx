@@ -26,7 +26,7 @@ export default function Library() {
 
   return (
     <>
-      <main className="flex grow flex-col gap-4 px-4 pt-14 pb-4">
+      <main className="flex grow flex-col gap-4 px-4 pt-14 pb-4 md:pt-8">
         <h1 className="mx-2 text-[26px] font-bold">Library</h1>
 
         {photos.length === 0 ? (
@@ -54,7 +54,7 @@ export default function Library() {
                 })}
               </div>
             )}
-            <ul className="grid grid-cols-3 gap-1.5">
+            <ul className="grid grid-cols-3 gap-1.5 md:grid-cols-5 md:gap-3 lg:grid-cols-6">
               {shown.map((p) => (
                 <li key={p.id}>
                   <Link href={`/photo/${p.id}`} aria-label={p.fileName} className="block overflow-hidden rounded-xl">

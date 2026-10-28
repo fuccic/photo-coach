@@ -3,7 +3,7 @@ import { BackIcon } from "./icons";
 
 export function TopBar({ back, children, right }: { back: string; children?: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <header className="flex items-center gap-2 px-3 pt-12 pb-2">
+    <header className="flex items-center gap-2 px-3 pt-12 pb-2 md:pt-6">
       <Link href={back} aria-label="Back" className="flex size-11 items-center justify-center">
         <BackIcon />
       </Link>

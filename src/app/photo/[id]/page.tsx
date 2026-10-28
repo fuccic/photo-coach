@@ -79,9 +79,9 @@ export default function PhotoReview() {
         )}
       </TopBar>
 
-      <main className="flex grow flex-col gap-4 px-4 pb-8">
+      <main className="flex grow flex-col gap-4 px-4 pb-8 md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)] md:items-start md:gap-8">
         <div className="relative overflow-hidden rounded-[20px] bg-[#1a1916]">
-          <PhotoThumb photo={photo} fit="contain" className="h-[min(60vh,420px)] w-full" />
+          <PhotoThumb photo={photo} fit="contain" className="h-[min(60vh,420px)] w-full md:h-[calc(100dvh-14rem)] md:min-h-[360px]" />
           {meta?.hasSettings && (
             <div className="absolute bottom-3 left-3">
               <SettingChips meta={meta} tone="overlay" />
@@ -89,27 +89,29 @@ export default function PhotoReview() {
           )}
         </div>
 
-        <div className="flex flex-col gap-1 px-1">
-          <DeviceLabel device={meta?.device} className="text-[15px] font-medium" />
-          {meta?.lens && <span className="truncate text-sm text-muted">{meta.lens}</span>}
+        <div className="flex flex-col gap-4 md:sticky md:top-20">
+          <div className="flex flex-col gap-1 px-1">
+            <DeviceLabel device={meta?.device} className="text-[15px] font-medium" />
+            {meta?.lens && <span className="truncate text-sm text-muted">{meta.lens}</span>}
+          </div>
+
+          {meta && !meta.hasSettings && (
+            <p className="rounded-[18px] bg-warn/25 p-4 text-[15px]">
+              No camera settings in this file. Messaging apps often remove them, so try the original photo.
+            </p>
+          )}
+
+          {details.length > 0 && (
+            <dl className="grid grid-cols-2 gap-2">
+              {details.map((d) => (
+                <div key={d.label} className="rounded-2xl bg-surface px-4 py-3">
+                  <dt className="text-xs text-muted">{d.label}</dt>
+                  <dd className="font-mono text-lg">{d.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
-
-        {meta && !meta.hasSettings && (
-          <p className="rounded-[18px] bg-warn/25 p-4 text-[15px]">
-            No camera settings in this file. Messaging apps often remove them, so try the original photo.
-          </p>
-        )}
-
-        {details.length > 0 && (
-          <dl className="grid grid-cols-2 gap-2">
-            {details.map((d) => (
-              <div key={d.label} className="rounded-2xl bg-surface px-4 py-3">
-                <dt className="text-xs text-muted">{d.label}</dt>
-                <dd className="font-mono text-lg">{d.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
       </main>
     </>
   );

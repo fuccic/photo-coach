@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Mono, DM_Sans } from "next/font/google";
+import { DesktopHeader } from "@/components/DesktopHeader";
+import { DropZone } from "@/components/DropZone";
 import { PhotosProvider } from "@/components/PhotosProvider";
 import "./globals.css";
 
@@ -20,7 +22,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body className={`${dmSans.variable} ${dmMono.variable} font-sans antialiased`}>
         <PhotosProvider>
-          <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col">{children}</div>
+          <DesktopHeader />
+          <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col md:min-h-[calc(100dvh-4rem)] md:max-w-6xl md:px-4">{children}</div>
+          <DropZone />
         </PhotosProvider>
       </body>
     </html>

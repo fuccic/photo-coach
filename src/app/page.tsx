@@ -11,16 +11,17 @@ import { KNOWN_DEVICES } from "@/lib/devices";
 
 export default function Home() {
   const { photos } = usePhotos();
-  const recent = photos.slice(0, 3);
+  const recent = photos.slice(0, 6);
 
   return (
     <>
-      <main className="flex grow flex-col gap-7 px-6 pt-14 pb-6">
-        <h1 className="text-[26px] font-bold tracking-tight">Photo Coach</h1>
+      <main className="flex grow flex-col gap-7 px-6 pt-14 pb-6 md:grid md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:content-start md:gap-x-10 md:pt-10">
+        <h1 className="text-[26px] font-bold tracking-tight md:sr-only">Photo Coach</h1>
 
-        <AddPhotosButton className="flex h-56 flex-col items-center justify-center gap-3 rounded-3xl bg-accent text-on-accent">
+        <AddPhotosButton className="flex h-56 flex-col items-center justify-center gap-3 rounded-3xl bg-accent text-on-accent hover:bg-accent-ink md:row-span-2 md:h-[420px]">
           <AddPhotoIcon size={48} />
           <span className="text-[22px] font-bold">Add a photo</span>
+          <span className="hidden text-sm opacity-85 md:block">or drop photos here</span>
         </AddPhotosButton>
 
         <section className="flex flex-col gap-2.5">
@@ -39,8 +40,8 @@ export default function Home() {
           <section className="flex flex-col gap-2.5">
             <h2 className="text-sm font-medium text-muted">Recent</h2>
             <ul className="grid grid-cols-3 gap-2">
-              {recent.map((p) => (
-                <li key={p.id}>
+              {recent.map((p, i) => (
+                <li key={p.id} className={i >= 3 ? "hidden md:block" : undefined}>
                   <Link href={`/photo/${p.id}`} aria-label={p.fileName} className="block overflow-hidden rounded-2xl">
                     <PhotoThumb photo={p} className="aspect-square w-full" />
                   </Link>
