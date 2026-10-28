@@ -2,16 +2,38 @@
 
 **Learn your camera by looking at your own photos.**
 
-Photo Coach is for people who just got a camera (or want more from their phone) and keep shooting in Auto because the settings feel confusing. You add a photo you took, and Photo Coach shows you which settings your camera used. Next, it will tell you what to change for a better shot and exactly which buttons to press on your camera.
+Photo Coach is for people who just got a camera (or want more from their phone) and keep shooting in Auto because the settings feel confusing. You add a photo you took, and Photo Coach shows you what went wrong, which setting to change, and exactly which buttons to press on your camera.
 
 No jargon tests, no theory first. You learn from the photo you just took.
 
 ## How to use it
 
+<p align="center">
+  <img src="docs/screenshots/desktop-review.png" alt="Photo Coach on a computer: a dark photo with Too dark and Grainy tiles, and the fix 0 EV to +3 EV" width="800">
+</p>
+
 1. **Take some photos** with your camera or phone. Bad ones are best: too dark, blurry, noisy.
-2. **Add them** to Photo Coach. Tap **Add a photo**, or on a computer drag them onto the page.
-3. **See what went wrong.** Each photo gets problem tiles like "Too dark" or "A bit blurry" (orange is a big problem, blue a small one). Tap **Why?** for the reason, and the ⊕ button on the photo to see where the problem is.
-4. **See your settings.** Each photo shows its shutter speed, aperture and ISO, plus the lens and mode.
+2. **Add them.** Tap **Add a photo**, or on a computer drag them onto the page.
+3. **See what went wrong.** Each photo gets problem tiles like "Too dark" or "Blurry". Tap **Why?** for the reason, and ⊕ to see where the problem is.
+4. **See the fix.** Each problem shows the setting to change, like `1/8s → 1/125s`.
+5. **Tap Show me how** for the buttons to press on *your* camera, one step at a time.
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="docs/screenshots/home.png" alt="Home screen with Add a photo and your cameras"><br><b>Add a photo</b></td>
+    <td align="center" width="25%"><img src="docs/screenshots/upload.png" alt="Three photos added, each with its settings and problem icons"><br><b>Settings read for you</b></td>
+    <td align="center" width="25%"><img src="docs/screenshots/review-too-dark.png" alt="A dark Sony photo with Too dark and Grainy tiles"><br><b>What went wrong</b></td>
+    <td align="center" width="25%"><img src="docs/screenshots/review-blurry.png" alt="A blurry Sony photo: change 1/8s to 1/125s and ISO 100 to 1600"><br><b>What to change</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/fix-sony-a7ii.png" alt="Sony α7 II steps: rear dial to 1/125, press ISO, turn the wheel to 1600"><br><b>Sony α7 II: which buttons</b></td>
+    <td align="center"><img src="docs/screenshots/review-iphone.png" alt="A dark iPhone photo with a Too dark tile"><br><b>iPhone works too</b></td>
+    <td align="center"><img src="docs/screenshots/fix-iphone.png" alt="iPhone steps: tap the subject, drag the sun up, tap the moon"><br><b>iPhone: which taps</b></td>
+    <td align="center"><img src="docs/screenshots/library.png" alt="Library of saved photos, filtered by camera"><br><b>Your photos, saved</b></td>
+  </tr>
+</table>
+
+<sub>Screenshots use sample photos darkened or blurred on purpose, with made-up camera settings.</sub>
 
 > Use the original file. Sending a photo through Messages, WhatsApp or social apps often strips its settings, and Photo Coach will say "No settings found". On iPhone, AirDrop it or export it with "All Photos Data" turned on.
 
@@ -40,8 +62,8 @@ A few rules of thumb to try:
 |---|---|---|
 | Read settings | Shutter, aperture, ISO, lens and mode from each photo | ✅ Works now |
 | Spot problems | "Too dark", "Too bright", "A bit blurry", "Out of focus", "Grainy" | ✅ Works now |
-| Suggest a fix | `ISO 100 → ISO 800`, with a "Why?" in one sentence | 🔜 Next |
-| Show the buttons | Step-by-step on *your* camera: "Mode dial on A, press ISO on the wheel, turn to 800" | 🔜 Next |
+| Suggest a fix | `ISO 100 → ISO 800`, with a "Why?" in one sentence | ✅ Works now |
+| Show the buttons | Step-by-step on *your* camera: "Press ISO on the wheel, turn to 800" | ✅ Works now |
 | Track progress | Your most common mistakes over time | Later |
 
 ## Supported cameras
