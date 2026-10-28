@@ -11,7 +11,7 @@ import { usePhotos } from "@/components/PhotosProvider";
 const UNKNOWN = "unknown";
 
 export default function Library() {
-  const { photos } = usePhotos();
+  const { photos, ready } = usePhotos();
   const [filter, setFilter] = useState("all");
 
   const deviceOf = (id: string) => photos.find((p) => p.id === id)?.meta?.device;
@@ -29,7 +29,7 @@ export default function Library() {
       <main className="flex grow flex-col gap-4 px-4 pt-14 pb-4 md:pt-8">
         <h1 className="mx-2 text-[26px] font-bold">Library</h1>
 
-        {photos.length === 0 ? (
+        {!ready ? null : photos.length === 0 ? (
           <AddPhotosButton className="mx-2 flex h-40 flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-line text-muted">
             <PlusIcon size={32} />
             <span className="font-medium">Add a photo</span>

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { DeviceLabel } from "@/components/DeviceLabel";
 import { ChangeLines, useFix } from "@/components/Fix";
-import { AreaIcon, BackIcon, NextIcon } from "@/components/icons";
+import { AreaIcon, BackIcon, NextIcon, TrashIcon } from "@/components/icons";
 import { AreaOverlay, IssueBadge, usePhotoIssues } from "@/components/Issues";
 import { PhotoThumb } from "@/components/PhotoThumb";
 import { usePhotos, type Photo } from "@/components/PhotosProvider";
@@ -29,7 +29,8 @@ export default function PhotoReview() {
 }
 
 function Review({ id }: { id: string }) {
-  const { photos, lastBatch } = usePhotos();
+  const { photos, ready, lastBatch, removePhoto } = usePhotos();
+  const router = useRouter();
   const inBatch = lastBatch.includes(id);
   const sequence = inBatch ? lastBatch : photos.map((p) => p.id);
   const index = sequence.indexOf(id);
@@ -40,12 +41,13 @@ function Review({ id }: { id: string }) {
   const [showWhy, setShowWhy] = useState(false);
 
   if (!photo) {
+    if (!ready) return <Loading />;
     return (
       <>
         <TopBar back="/" />
         <main className="flex grow flex-col items-center justify-center gap-4 px-6 pb-24 text-center">
           <p className="text-lg font-medium">This photo is gone</p>
-          <p className="text-muted">Photos stay on this page only until you close it.</p>
+          <p className="text-muted">It was deleted, or it was saved in a different browser.</p>
           <Link href="/" className="flex min-h-12 items-center rounded-2xl bg-accent px-6 font-bold text-on-accent">
             Add a photo
           </Link>
@@ -58,6 +60,13 @@ function Review({ id }: { id: string }) {
   const selected = issues?.[picked];
   const prev = index > 0 ? sequence[index - 1] : undefined;
   const next = index >= 0 && index < sequence.length - 1 ? sequence[index + 1] : undefined;
+  const back = inBatch ? "/upload" : "/library";
+
+  const remove = () => {
+    const neighbour = next ?? prev;
+    removePhoto(id);
+    router.replace(neighbour ? `/photo/${neighbour}` : back);
+  };
 
   const details = meta
     ? [
@@ -71,18 +80,21 @@ function Review({ id }: { id: string }) {
   return (
     <>
       <TopBar
-        back={inBatch ? "/upload" : "/library"}
+        back={back}
         right={
-          sequence.length > 1 && (
-            <div className="flex">
-              <PagerLink id={prev} label="Previous photo">
-                <BackIcon />
-              </PagerLink>
-              <PagerLink id={next} label="Next photo">
-                <NextIcon />
-              </PagerLink>
-            </div>
-          )
+          <div className="flex items-center">
+            {sequence.length > 1 && (
+              <>
+                <PagerLink id={prev} label="Previous photo">
+                  <BackIcon />
+                </PagerLink>
+                <PagerLink id={next} label="Next photo">
+                  <NextIcon />
+                </PagerLink>
+              </>
+            )}
+            <DeleteButton onDelete={remove} />
+          </div>
         }
       >
         {sequence.length > 1 && (
@@ -133,6 +145,10 @@ function Review({ id }: { id: string }) {
             {meta?.lens && <span className="truncate text-sm text-muted">{meta.lens}</span>}
           </div>
 
+          {photo.unsaved && (
+            <p className="rounded-[18px] bg-warn/25 p-4 text-[15px]">Not saved: this browser is out of space. It will be gone when you close the tab.</p>
+          )}
+
           {meta && !meta.hasSettings && (
             <p className="rounded-[18px] bg-warn/25 p-4 text-[15px]">
               No camera settings in this file. Messaging apps often remove them, so try the original photo.
@@ -152,6 +168,38 @@ function Review({ id }: { id: string }) {
         </div>
       </main>
     </>
+  );
+}
+
+function Loading() {
+  return (
+    <main className="flex grow items-center justify-center" role="status" aria-label="Loading">
+      <span className="size-8 animate-spin rounded-full border-3 border-line border-t-accent" aria-hidden="true" />
+    </main>
+  );
+}
+
+/** Two taps: the first asks, the second deletes. */
+function DeleteButton({ onDelete }: { onDelete: () => void }) {
+  const [asking, setAsking] = useState(false);
+  if (asking) {
+    return (
+      <button
+        type="button"
+        onClick={onDelete}
+        onBlur={() => setAsking(false)}
+        autoFocus
+        className="ml-1 flex min-h-11 items-center gap-1.5 rounded-full bg-warn px-3.5 text-[15px] font-bold text-[#121826]"
+      >
+        <TrashIcon size={18} />
+        Delete
+      </button>
+    );
+  }
+  return (
+    <button type="button" onClick={() => setAsking(true)} aria-label="Delete photo" className="flex size-11 items-center justify-center">
+      <TrashIcon />
+    </button>
   );
 }
 

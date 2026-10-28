@@ -16,7 +16,7 @@ export default function ShowMeHow() {
 }
 
 function FixSteps({ id, kind }: { id: string; kind: string }) {
-  const { photos } = usePhotos();
+  const { photos, ready } = usePhotos();
   const photo = photos.find((p) => p.id === id);
   const issue = usePhotoIssues(photo)?.find((i) => i.kind === kind);
   const solved = useFix(photo, issue);
@@ -24,6 +24,8 @@ function FixSteps({ id, kind }: { id: string; kind: string }) {
   const back = `/photo/${id}`;
 
   if (!photo || !solved) {
+    // Saved photos are still loading, or this photo is still being checked.
+    if (!ready || (photo && photo.stats === undefined)) return <main className="grow" />;
     return (
       <>
         <TopBar back={photo ? back : "/"} />
