@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { DeviceLabel } from "@/components/DeviceLabel";
+import { ChangeLines, useFix } from "@/components/Fix";
 import { AreaIcon, BackIcon, NextIcon } from "@/components/icons";
 import { AreaOverlay, IssueBadge, usePhotoIssues } from "@/components/Issues";
 import { PhotoThumb } from "@/components/PhotoThumb";
@@ -186,6 +187,9 @@ function Problems({
   showWhy: boolean;
   onToggleWhy: () => void;
 }) {
+  const selected = issues ? (issues[picked] ?? issues[0]) : undefined;
+  const solved = useFix(photo, selected);
+
   if (issues === undefined) {
     return (
       <div className={`${TILE} border-transparent`} role="status">
@@ -201,7 +205,7 @@ function Problems({
       </p>
     );
   }
-  if (issues.length === 0) {
+  if (!selected) {
     return (
       <div className={`${TILE} border-transparent`}>
         <IssueBadge kind="good" tone="good" />
@@ -210,7 +214,6 @@ function Problems({
     );
   }
 
-  const selected = issues[picked] ?? issues[0];
   return (
     <section aria-label="Problems" className="flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2">
@@ -228,8 +231,15 @@ function Problems({
         ))}
       </div>
       <div className="flex flex-col gap-3 rounded-[18px] bg-surface p-4">
-        <div className="flex items-center gap-3">
-          <span className="grow font-mono text-sm text-muted uppercase">{selected.severity === "big" ? "Big problem" : "Small problem"}</span>
+        <span className="font-mono text-sm text-muted uppercase">{selected.severity === "big" ? "Big problem" : "Small problem"}</span>
+        {solved && <ChangeLines fix={solved.fix} />}
+        <div className="flex gap-2">
+          <Link
+            href={`/photo/${photo.id}/fix/${selected.kind}`}
+            className="flex min-h-12 grow items-center justify-center rounded-[14px] bg-accent text-base font-bold text-on-accent"
+          >
+            Show me how
+          </Link>
           <button
             type="button"
             onClick={onToggleWhy}
