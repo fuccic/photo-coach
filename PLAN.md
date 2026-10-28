@@ -53,10 +53,21 @@ Most beginners own a capable camera but shoot in Auto because the manual setting
   - **Noise:** ISO vs. sensor size, plus a noise estimate in flat regions.
   - **Tilt:** horizon line detection.
 - Recommendations as generic settings ("raise shutter speed to 1/250s").
-- Camera instructions for **one brand family** to prove the format (e.g. Canon EOS R series or Sony Alpha).
+- Camera instructions for **one model** to prove the format: the **Sony α7 II (ILCE-7M2)**. See section 3.1.
 - No accounts; everything stays in the browser.
 
 **Exit criteria:** on the test set, at least 80% of the main issues are correctly flagged and a beginner can follow the instruction card without help.
+
+### 3.1 First camera: Sony α7 II
+
+The MVP targets the Sony α7 II, so the instruction format, the settings solver, and the test photo set all start there. Why it's a good first pick:
+
+- **Physical controls map cleanly to advice:** mode dial (P / A / S / M), front and rear dials, a dedicated exposure compensation dial, a control wheel, the Fn menu, and C1 to C4 custom buttons.
+- **Rich, well-decoded metadata:** ExifTool reads Sony MakerNotes in depth (focus mode, AF area, SteadyShot state, lens model), which helps tell missed focus from camera shake.
+- **In-body stabilization (5-axis SteadyShot)** changes the safe-shutter-speed rule, a good early test of the settings solver.
+- **Things to watch:** it uses Sony's older tab-based menu (pre-2020), so menu paths won't carry over to newer Sony bodies like the α7 IV; and C1 to C4 are user-assignable, so instructions should prefer the dials and Fn menu. The α7R II and α7S II share most controls, so they're cheap follow-ups.
+
+Once the α7 II works end to end, the next models are other Sony bodies (α7 III, α6000 series), then other brands.
 
 ### Phase 2: AI-assisted analysis and explanations (3 to 4 weeks)
 - Add a vision-language model (Claude) to look at the photo plus the computed metrics and EXIF, to:
@@ -67,7 +78,7 @@ Most beginners own a capable camera but shoot in Auto because the manual setting
 
 ### Phase 3: Camera instruction database (ongoing, starts in Phase 1)
 - Structured data per camera model: dials, buttons, menu paths, mode names, ISO/shutter ranges, focus modes.
-- Cover the **top ~30 beginner bodies** across Canon, Sony, Nikon, Fujifilm, Panasonic, and OM System.
+- Start with Sony (α7 II first), then grow to the **top ~30 beginner bodies** across Canon, Sony, Nikon, Fujifilm, Panasonic, and OM System.
 - Graceful fallback for unknown models: brand-level generic instructions plus "check your manual, page X" search.
 - A contribution flow (internal admin form at first) so we can add models without code changes.
 
@@ -144,7 +155,7 @@ Ranked from hardest to easiest.
 ## 6. Open questions for discussion
 
 1. **Platform first:** web app, or mobile from day one? (Recommendation: responsive web/PWA first.)
-2. **Which cameras for the MVP?** Pick one brand family that you or early testers actually own.
+2. ~~**Which cameras for the MVP?**~~ Decided: Sony α7 II first (see 3.1).
 3. **Phones in scope?** Phone photos have rich EXIF but few manual controls. Include in MVP or later?
 4. **Accounts and storage:** is a fully local, no-login MVP acceptable?
 5. **Monetization:** free, freemium (X analyses per month), or one-time purchase? Affects how much AI usage we can afford.
@@ -154,7 +165,8 @@ Ranked from hardest to easiest.
 
 ## 7. Immediate next steps
 
-1. Review this plan and the frontend mocks; agree on MVP scope and first camera brand.
+1. Review this plan and the frontend mocks; agree on MVP scope.
 2. Scaffold the Next.js app and CI (Phase 0).
 3. Build the EXIF reader and the first two analyzers (exposure, blur) behind the upload screen.
-4. Draft the camera database schema and fill in the first model.
+4. Draft the camera database schema and fill in the Sony α7 II entry.
+5. Build the test photo set around α7 II shots (yours if possible) with EXIF intact.
