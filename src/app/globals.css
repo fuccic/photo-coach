@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* "Golden hour" palette, from the approved mocks. */
+@theme {
+  --color-bg: #fff8f1;
+  --color-surface: #fae8d8;
+  --color-line: #eed6c0;
+  --color-ink: #2a1e17;
+  --color-muted: #6b5547;
+  --color-accent: #c2410c;
+  --color-accent-ink: #b13a0a;
+  --color-on-accent: #ffffff;
+  --color-warn: #f5a524;
+  --color-info: #8ec1ee;
+  --color-good: #6fd39a;
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+}
+
+html {
+  background: var(--color-bg);
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
