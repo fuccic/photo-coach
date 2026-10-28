@@ -138,7 +138,7 @@ function grain(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
 }
 
 /** The usual hand-held rule: 1 / (35mm-equivalent focal length) seconds. */
-function handHeldLimit(meta?: PhotoMeta): number {
+export function handHeldLimit(meta?: PhotoMeta): number {
   const focal = meta?.focalLength35 ?? (meta?.device?.kind === "camera" ? meta.focalLength : undefined);
   return 1 / Math.max(focal ?? 30, 15);
 }
