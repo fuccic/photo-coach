@@ -62,7 +62,7 @@ npm test           # unit tests (EXIF reading, device detection, formatting)
 npm run lint && npm run typecheck && npm run build
 ```
 
-Built with Next.js, TypeScript and Tailwind. Photos are kept only until the tab is closed (no accounts or storage yet). Test photos in `test/fixtures/` are small synthetic files with hand-written EXIF, not real camera output.
+Built with Next.js, TypeScript and Tailwind. Photos are saved in the browser (IndexedDB, see `src/lib/photoStore.ts`), so they are still there after closing the tab, but only in that browser on that device. There are no accounts and nothing is uploaded. Test photos in `test/fixtures/` are small synthetic files with hand-written EXIF, not real camera output.
 
 - `src/lib/exif.ts`: reads EXIF with [exifr](https://github.com/MikeKovarik/exifr) into a `PhotoMeta`.
 - `src/lib/heifExif.ts`: fallback EXIF locator for HEIC files exifr can't read (files written by libheif-based tools).

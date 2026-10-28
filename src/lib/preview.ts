@@ -1,21 +1,24 @@
 import { detectFormat } from "./fileTypes";
 import { extractEmbeddedJpeg } from "./rawPreview";
 
-/** Returns an object URL the browser can show, or null when the photo can't be previewed. */
-export async function makePreviewUrl(file: File): Promise<string | null> {
-  const format = detectFormat(file.name, file.type);
+/**
+ * Makes something the browser can show: "original" when it can show the file itself, a JPEG for
+ * RAW and (outside Safari) HEIC, or null when the photo can't be previewed.
+ */
+export async function makePreview(file: Blob, fileName: string): Promise<Blob | "original" | null> {
+  const format = detectFormat(fileName, file.type);
   try {
     if (format === "arw") {
       const jpeg = extractEmbeddedJpeg(await file.arrayBuffer());
-      return jpeg ? URL.createObjectURL(new Blob([jpeg.slice()], { type: "image/jpeg" })) : null;
+      return jpeg ? new Blob([jpeg.slice()], { type: "image/jpeg" }) : null;
     }
     if (format === "heic" && !(await canDecode(file))) {
       // Only Safari decodes HEIC natively; elsewhere convert in the browser. Loaded on demand (~1 MB).
       const { default: heic2any } = await import("heic2any");
       const out = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
-      return URL.createObjectURL(Array.isArray(out) ? out[0] : out);
+      return Array.isArray(out) ? out[0] : out;
     }
-    return URL.createObjectURL(file);
+    return "original";
   } catch {
     return null;
   }

@@ -53,6 +53,9 @@ export type ImageStats = {
   detailTiles: number;
 };
 
+/** Bump when measure() changes, so saved photos are measured again with the new version. */
+export const MEASURE_VERSION = 1;
+
 const CLIP_LEVEL = 252;
 const CRUSH_LEVEL = 12;
 /** Gradient energy (per pixel, above grain) a tile needs before its sharpness counts. */

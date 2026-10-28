@@ -3,7 +3,7 @@ import { measure, type ImageStats } from "./measure";
 /** Long edge the photo is measured at: about what a screen shows when the whole photo fits. */
 export const ANALYSIS_SIZE = 1600;
 
-/** Measures a photo the browser can show (an object URL from makePreviewUrl). Null if it can't be read. */
+/** Measures a photo the browser can show (an object URL of its preview). Null if it can't be read. */
 export async function analyzeImage(url: string): Promise<ImageStats | null> {
   try {
     const img = new Image();
