@@ -6,7 +6,7 @@ import { MEASURE_VERSION, type ImageStats } from "@/lib/analysis/measure";
 import { readPhotoMeta, type PhotoMeta } from "@/lib/exif";
 import { detectFormat, type PhotoFormat } from "@/lib/fileTypes";
 import { askToKeepPhotos, deletePhoto, loadPhotos, savePhoto, updatePhoto, type StoredPhoto } from "@/lib/photoStore";
-import { makePreview } from "@/lib/preview";
+import { makePreview, makeSmallCopy } from "@/lib/preview";
 
 export type Photo = {
   id: string;
@@ -41,6 +41,7 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [lastBatch, setLastBatch] = useState<string[]>([]);
   const urls = useRef(new Map<string, string>());
+  const removed = useRef(new Set<string>());
 
   const update = useCallback((id: string, patch: Partial<Photo>) => {
     setPhotos((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
@@ -49,25 +50,35 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
   // Photos are measured one at a time (about 0.1s each) so a big batch doesn't freeze the page.
   const queue = useRef(Promise.resolve());
   const measureLater = useCallback(
-    (id: string, url: string | null) => {
+    (id: string, url: string | null, persist: (patch: Partial<StoredPhoto>) => void) => {
       queue.current = queue.current.then(async () => {
         await new Promise((r) => setTimeout(r));
         const stats = url ? await analyzeImage(url) : null;
         update(id, { stats });
-        updatePhoto(id, { stats, statsVersion: MEASURE_VERSION }).catch(() => {});
+        persist({ stats, statsVersion: MEASURE_VERSION });
       });
     },
     [update],
   );
 
-  /** Fills in whatever a photo is still missing: metadata, preview, measurements. */
+  /**
+   * Fills in whatever a photo is still missing: metadata, preview, measurements. `saved` is the
+   * save of a new photo (true when the original was kept), so details are only stored once it exists.
+   */
   const prepare = useCallback(
-    (rec: StoredPhoto) => {
+    (rec: StoredPhoto, saved: Promise<boolean> = Promise.resolve(true)) => {
       const { id, original } = rec;
+      const persist = (patch: Partial<StoredPhoto>, ifOriginalKept = false) => {
+        saved
+          .then(async (kept) => {
+            if (kept || !ifOriginalKept) await updatePhoto(id, patch);
+          })
+          .catch(() => {});
+      };
       if (rec.meta === undefined) {
         readPhotoMeta(original ?? new Uint8Array()).then((meta) => {
           update(id, { meta });
-          updatePhoto(id, { meta }).catch(() => {});
+          persist({ meta });
         });
       }
       const preview =
@@ -75,7 +86,8 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
           ? Promise.resolve(rec.preview)
           : original
             ? makePreview(original, rec.fileName).then((p) => {
-                updatePhoto(id, { preview: p }).catch(() => {});
+                // Without the original, the small copy saved in its place is the preview.
+                persist({ preview: p }, true);
                 return p;
               })
             : Promise.resolve(null);
@@ -84,7 +96,7 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
         const url = blob ? URL.createObjectURL(blob) : null;
         if (url) urls.current.set(id, url);
         update(id, { previewUrl: url });
-        if (rec.stats === undefined || rec.statsVersion !== MEASURE_VERSION) measureLater(id, url);
+        if (rec.stats === undefined || rec.statsVersion !== MEASURE_VERSION) measureLater(id, url, persist);
       });
     },
     [update, measureLater],
@@ -106,7 +118,7 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
         }));
         // Photos added while loading stay on top.
         setPhotos((list) => [...list, ...restored.filter((r) => !list.some((p) => p.id === r.id))]);
-        saved.forEach(prepare);
+        saved.forEach((rec) => prepare(rec));
       })
       .catch(() => {})
       .finally(() => setReady(true));
@@ -128,8 +140,12 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
 
       askToKeepPhotos();
       for (const rec of added) {
-        savePhoto(rec).catch(() => update(rec.id, { unsaved: true }));
-        prepare(rec);
+        // Out of space: keep a small JPEG instead, unless the photo was deleted meanwhile.
+        const smallCopy = async () =>
+          rec.original && !removed.current.has(rec.id) ? makeSmallCopy(rec.original, rec.fileName) : null;
+        const saved = savePhoto(rec, smallCopy);
+        saved.catch(() => update(rec.id, { unsaved: true }));
+        prepare(rec, saved);
       }
       return added.map((p) => p.id);
     },
@@ -137,6 +153,7 @@ export function PhotosProvider({ children }: { children: React.ReactNode }) {
   );
 
   const removePhoto = useCallback((id: string) => {
+    removed.current.add(id);
     setPhotos((list) => list.filter((p) => p.id !== id));
     setLastBatch((batch) => batch.filter((b) => b !== id));
     const url = urls.current.get(id);

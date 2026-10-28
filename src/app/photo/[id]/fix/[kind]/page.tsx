@@ -18,8 +18,9 @@ export default function ShowMeHow() {
 function FixSteps({ id, kind }: { id: string; kind: string }) {
   const { photos, ready } = usePhotos();
   const photo = photos.find((p) => p.id === id);
-  const issue = usePhotoIssues(photo)?.find((i) => i.kind === kind);
-  const solved = useFix(photo, issue);
+  const issues = usePhotoIssues(photo);
+  const issue = issues?.find((i) => i.kind === kind);
+  const solved = useFix(photo, issue, issues);
   const [done, setDone] = useState<boolean[]>([]);
   const back = `/photo/${id}`;
 

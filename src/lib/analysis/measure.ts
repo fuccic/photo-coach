@@ -12,7 +12,7 @@ export const GRID = 16;
 export type TileStats = {
   /** Average brightness, 0–255. */
   luma: number;
-  /** Share of pixels with a channel at pure white. */
+  /** Share of pixels at pure white (every channel maxed out). */
   clipped: number;
   /** Share of pixels close to black. */
   crushed: number;
@@ -54,7 +54,7 @@ export type ImageStats = {
 };
 
 /** Bump when measure() changes, so saved photos are measured again with the new version. */
-export const MEASURE_VERSION = 1;
+export const MEASURE_VERSION = 2;
 
 const CLIP_LEVEL = 252;
 const CRUSH_LEVEL = 12;
@@ -101,7 +101,8 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
       const t = tileOf(x, y);
       count[t]++;
       sumL[t] += l;
-      if (Math.max(r, g, b) >= CLIP_LEVEL) {
+      // Only pure white counts: one maxed channel is just a strong colour (red flowers, sunsets).
+      if (Math.min(r, g, b) >= CLIP_LEVEL) {
         clip[t]++;
         clippedPx++;
       }

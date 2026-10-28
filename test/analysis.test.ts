@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findIssues } from "@/lib/analysis/checks";
 import { measure } from "@/lib/analysis/measure";
+import { identifyDevice } from "@/lib/devices";
 import type { PhotoMeta } from "@/lib/exif";
 
 // Synthetic scenes stand in for real photos: shapes with hard edges and a smooth sky, which we
@@ -159,7 +160,29 @@ describe("photo checks", () => {
   it("blames a slow shutter for blur", () => {
     const [issue] = check(toRgba(gaussianBlur(base, 3)), { ...camera, exposureTime: 1 / 8 });
     expect(issue.kind).toBe("shake");
-    expect(issue.why).toContain("1/8s is slow to hold steady at 35mm. Aim for 1/35s or faster.");
+    // The α7 II's stabilisation buys about two stops over 1 / focal length.
+    expect(issue.why).toContain("1/8s is slow to hold steady at 35mm. Aim for 1/9s or faster.");
+    const canon = identifyDevice("Canon", "Canon EOS R50");
+    const [other] = check(toRgba(gaussianBlur(base, 3)), { ...camera, device: canon, exposureTime: 1 / 8 });
+    expect(other.why).toContain("Aim for 1/35s or faster.");
+  });
+
+  it("doesn't blame a phone's Night mode exposure for a soft photo, or tell it to set a shutter", () => {
+    const phone = { ...camera, device: identifyDevice("Apple", "iPhone 18 Pro"), exposureTime: 1, fNumber: 1.8 };
+    const [issue] = check(toRgba(gaussianBlur(base, 3)), phone);
+    expect(issue.kind).toBe("focus");
+    expect(issue.why).not.toMatch(/Aim for|f\/1.8/);
+    const [shake] = check(toRgba(motionBlur(base, 9)), phone);
+    expect(shake.kind).toBe("shake");
+    expect(shake.why).toContain("Night mode took 1s");
+  });
+
+  it("doesn't call strong colours pure white", () => {
+    const red = new Float32Array(W * H * 3);
+    for (let p = 0; p < W * H; p++) red.set([1, 0.08 + 0.1 * ((p * 7) % 11) / 11, 0.05], p * 3);
+    const stats = measure(toRgba(red), W, H);
+    expect(stats.clipped).toBe(0);
+    expect(findIssues(stats, camera).some((i) => i.kind === "bright")).toBe(false);
   });
 
   it("spots grain at high ISO, and ignores it at low ISO", () => {
@@ -175,7 +198,7 @@ describe("photo checks", () => {
     const issues = check(toRgba(expose(base, -3.5), 6), { ...camera, iso: 12800 });
     expect(issues[0].severity).toBe("big");
     const grain = issues.find((i) => i.kind === "grain");
-    expect(grain?.why).toContain("Brightening a dark photo makes grain worse.");
+    expect(grain?.why).toContain("Both come from too little light.");
   });
 
   it("does not judge sharpness on a featureless photo", () => {

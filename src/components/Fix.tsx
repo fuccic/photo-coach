@@ -5,14 +5,19 @@ import { formatChange } from "@/lib/fixes/steps";
 import { guideFor, type Control, type Diagram, type Guide } from "@/lib/instructions";
 import type { Photo } from "./PhotosProvider";
 
-export function useFix(photo: Photo | undefined, issue: Issue | undefined): { fix: Fix; guide: Guide } | undefined {
+/** The fix for one of the photo's problems. `issues` is all of them, so fixes don't contradict each other. */
+export function useFix(
+  photo: Photo | undefined,
+  issue: Issue | undefined,
+  issues: Issue[] | null | undefined,
+): { fix: Fix; guide: Guide } | undefined {
   const meta = photo?.meta;
   const stats = photo?.stats;
   return useMemo(() => {
     if (!issue) return undefined;
     const guide = guideFor(meta?.device);
-    return { fix: solveFix(issue, meta, stats, guide), guide };
-  }, [issue, meta, stats]);
+    return { fix: solveFix(issue, meta, stats, guide, issues?.map((i) => i.kind)), guide };
+  }, [issue, issues, meta, stats]);
 }
 
 /** "ISO 100 → 800", one line per change, or the goal when there's nothing to dial in. */

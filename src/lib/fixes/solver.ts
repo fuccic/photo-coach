@@ -36,14 +36,31 @@ const GOALS: Record<IssueKind, string> = {
   grain: "Less grain",
 };
 
-export function solveFix(issue: Issue, meta: PhotoMeta | undefined, stats: ImageStats | null | undefined, guide: Guide): Fix {
-  const fix = guide.kind === "camera" ? cameraFix(issue, meta ?? undefined, stats, guide) : phoneFix(issue, meta);
+/** `found` is every problem found on the photo, so fixes for one problem don't undo another. */
+export function solveFix(
+  issue: Issue,
+  meta: PhotoMeta | undefined,
+  stats: ImageStats | null | undefined,
+  guide: Guide,
+  found: IssueKind[] = [],
+): Fix {
+  const fix = guide.kind === "camera" ? cameraFix(issue, meta ?? undefined, stats, guide, found) : phoneFix(issue, meta);
   return { kind: issue.kind, goal: GOALS[issue.kind], ...fix };
 }
 
-type Solved = Omit<Fix, "kind" | "goal">;
+type Solved = Omit<Fix, "kind" | "goal"> & { goal?: string };
 
-function cameraFix(issue: Issue, meta: PhotoMeta | undefined, stats: ImageStats | null | undefined, guide: CameraGuide): Solved {
+const SLOWER = "The shutter gets slower, so hold steady.";
+const MORE_GRAIN = "Higher ISO adds a little grain.";
+const STARVED = "ISO stays put to avoid more grain, so use a tripod or brace yourself.";
+
+function cameraFix(
+  issue: Issue,
+  meta: PhotoMeta | undefined,
+  stats: ImageStats | null | undefined,
+  guide: CameraGuide,
+  found: IssueKind[],
+): Solved {
   const { limits } = guide;
   const iso = meta?.iso;
   const t = meta?.exposureTime;
@@ -51,52 +68,63 @@ function cameraFix(issue: Issue, meta: PhotoMeta | undefined, stats: ImageStats 
   // In P, A and S the camera sets its own exposure, so exposure compensation is what makes it
   // brighter or darker; raising ISO would only change the shutter or aperture it picks.
   const manual = meta?.mode === "manual";
+  // Dark and grainy together means the camera was short of light. Raising ISO (the dark fix)
+  // adds grain and lowering it (the grain fix) darkens the photo further, so both problems get
+  // the same plan: more light through the shutter, ISO left where it is.
+  const starved = found.includes("dark") && found.includes("grain");
+
+  /** Brighter (sign 1) or darker (sign -1) by `stops`. With `keepIso`, never touches ISO. */
+  const exposure = (sign: 1 | -1, stops: number, keepIso: boolean): Solved => {
+    const ev = meta?.exposureComp ?? 0;
+    const evWasOff = sign * ev < -0.3;
+
+    if (manual && iso !== undefined && !evWasOff) {
+      const isoTo = keepIso ? iso : snapIso(iso * 2 ** (sign * stops), limits);
+      const changes: Change[] = isoTo !== iso ? [{ setting: "iso", from: iso, to: isoTo }] : [];
+      const actions: Action[] = changes.length ? [{ lever: "iso", value: isoTo }] : [];
+      // Out of ISO range (or keeping it): make up the rest with the shutter. Hand-holdable
+      // unless ISO is being kept down, then as slow as it takes.
+      const left = stops - Math.abs(Math.log2(isoTo / iso));
+      if (left >= 0.5 && t !== undefined) {
+        const shutterTo =
+          sign > 0 ? snapShutterSlower(t * 2 ** left, keepIso ? SHUTTERS[SHUTTERS.length - 1] : limit) : snapShutterFaster(t / 2 ** left, limits.shutterMin);
+        // Snapping to the hand-held limit can land on the wrong side of a slow tripod shutter.
+        if (sign > 0 ? shutterTo > t * 1.01 : shutterTo < t * 0.99) {
+          changes.push({ setting: "shutter", from: t, to: shutterTo });
+          actions.push({ lever: "shutter", value: shutterTo });
+        }
+      }
+      if (changes.length) {
+        const tradeOff = sign < 0 ? undefined : keepIso ? STARVED : changes[0].setting === "iso" ? MORE_GRAIN : SLOWER;
+        return { changes, actions, tradeOff };
+      }
+    }
+
+    const evTo = clamp(Math.round((ev + sign * stops) * 3) / 3, -limits.evMax, limits.evMax);
+    const changes: Change[] = [{ setting: "ev", from: meta?.exposureComp, to: evTo }];
+    const actions: Action[] = [];
+    if (manual) actions.push({ lever: "mode", value: "aperture" });
+    actions.push({ lever: "ev", value: evTo });
+    if (sign < 0) return { changes, actions };
+    if (keepIso) return { changes, actions, tradeOff: STARVED };
+
+    // Brighter means a slower shutter. Past the hand-held limit, raise ISO instead.
+    const slower = t !== undefined && meta?.mode !== "shutter" ? t * 2 ** (evTo - ev) : undefined;
+    if (slower !== undefined && slower > limit * 1.01 && iso !== undefined) {
+      const isoTo = snapIso(iso * Math.min(slower / limit, 2 ** stops), limits);
+      if (isoTo > iso) {
+        changes.push({ setting: "iso", from: iso, to: isoTo });
+        actions.push({ lever: "iso", value: isoTo });
+        return { changes, actions, tradeOff: MORE_GRAIN };
+      }
+    }
+    return { changes, actions, tradeOff: SLOWER };
+  };
 
   switch (issue.kind) {
     case "dark":
-    case "bright": {
-      const sign = issue.kind === "dark" ? 1 : -1;
-      const stops = exposureStops(issue, stats);
-      const ev = meta?.exposureComp ?? 0;
-      const evWasOff = sign * ev < -0.3;
-
-      if (manual && iso !== undefined && !evWasOff) {
-        const isoTo = snapIso(iso * 2 ** (sign * stops), limits);
-        const changes: Change[] = isoTo !== iso ? [{ setting: "iso", from: iso, to: isoTo }] : [];
-        const actions: Action[] = changes.length ? [{ lever: "iso", value: isoTo }] : [];
-        // Out of ISO range: make up the rest with the shutter, if that stays hand-holdable.
-        const left = stops - Math.abs(Math.log2(isoTo / iso));
-        if (left >= 0.5 && t !== undefined) {
-          const shutterTo = sign > 0 ? snapShutterSlower(t * 2 ** left, limit) : snapShutterFaster(t / 2 ** left, limits.shutterMin);
-          if (shutterTo !== t) {
-            changes.push({ setting: "shutter", from: t, to: shutterTo });
-            actions.push({ lever: "shutter", value: shutterTo });
-          }
-        }
-        if (changes.length) {
-          return { changes, actions, tradeOff: sign > 0 && changes[0].setting === "iso" ? "Higher ISO adds a little grain." : undefined };
-        }
-      }
-
-      const evTo = clamp(Math.round((ev + sign * stops) * 3) / 3, -limits.evMax, limits.evMax);
-      const changes: Change[] = [{ setting: "ev", from: meta?.exposureComp, to: evTo }];
-      const actions: Action[] = [];
-      if (manual) actions.push({ lever: "mode", value: "aperture" });
-      actions.push({ lever: "ev", value: evTo });
-      if (sign < 0) return { changes, actions };
-
-      // Brighter means a slower shutter. Past the hand-held limit, raise ISO instead.
-      const slower = t !== undefined && meta?.mode !== "shutter" ? t * 2 ** (evTo - ev) : undefined;
-      if (slower !== undefined && slower > limit * 1.01 && iso !== undefined) {
-        const isoTo = snapIso(iso * Math.min(slower / limit, 2 ** stops), limits);
-        if (isoTo > iso) {
-          changes.push({ setting: "iso", from: iso, to: isoTo });
-          actions.push({ lever: "iso", value: isoTo });
-          return { changes, actions, tradeOff: "Higher ISO adds a little grain." };
-        }
-      }
-      return { changes, actions, tradeOff: "The shutter gets slower, so hold steady." };
-    }
+    case "bright":
+      return exposure(issue.kind === "dark" ? 1 : -1, exposureStops(issue, stats), starved);
 
     case "shake": {
       // Fast enough for the lens, and for people walking.
@@ -137,6 +165,7 @@ function cameraFix(issue: Issue, meta: PhotoMeta | undefined, stats: ImageStats 
     }
 
     case "grain": {
+      if (starved) return { ...exposure(1, exposureStops({ ...issue, kind: "dark" }, stats), true), goal: "More light" };
       const from = iso ?? limits.isoMin * 16;
       const isoTo = snapIso(Math.max(limits.isoMin, from / 4), limits);
       const changes: Change[] = [{ setting: "iso", from: iso, to: isoTo }];

@@ -34,3 +34,25 @@ async function canDecode(file: Blob): Promise<boolean> {
     return false;
   }
 }
+
+/** A JPEG no bigger than `maxEdge` on its long side, for keeping when there's no room for the original. */
+export async function makeSmallCopy(file: Blob, fileName: string, maxEdge = 2048): Promise<Blob | null> {
+  const preview = await makePreview(file, fileName);
+  const shown = preview === "original" ? file : preview;
+  if (!shown) return null;
+  try {
+    const bitmap = await createImageBitmap(shown);
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  } catch {
+    return null;
+  }
+}

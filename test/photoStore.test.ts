@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { deletePhoto, loadPhotos, savePhoto, updatePhoto, type StoredPhoto } from "@/lib/photoStore";
 
 const photo = (id: string, addedAt: number): StoredPhoto => ({
@@ -34,5 +34,24 @@ describe("photoStore", () => {
     await deletePhoto("old");
     await updatePhoto("old", { stats: null });
     expect((await loadPhotos()).map((p) => p.id)).toEqual(["new"]);
+  });
+
+  it("keeps a small copy when the browser is out of space for the original", async () => {
+    const put = IDBObjectStore.prototype.put;
+    const full = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (this: IDBObjectStore, value, key) {
+      if ((value as StoredPhoto).original) throw new DOMException("Full", "QuotaExceededError");
+      return put.call(this, value, key);
+    });
+    try {
+      const small = new Blob(["small jpeg"], { type: "image/jpeg" });
+      expect(await savePhoto(photo("big", 3), async () => small)).toBe(false);
+      await expect(savePhoto(photo("none", 4), async () => null)).rejects.toThrow("Full");
+    } finally {
+      full.mockRestore();
+    }
+    const saved = (await loadPhotos()).find((p) => p.id === "big");
+    expect(saved?.original).toBeNull();
+    expect(await (saved?.preview as Blob).text()).toBe("small jpeg");
+    expect((await loadPhotos()).some((p) => p.id === "none")).toBe(false);
   });
 });

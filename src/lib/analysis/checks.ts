@@ -1,3 +1,4 @@
+import { isStabilized } from "../devices";
 import type { PhotoMeta } from "../exif";
 import { formatAperture, formatExposureComp, formatIso, formatShutter } from "../format";
 import type { ImageStats } from "./measure";
@@ -25,6 +26,8 @@ const BRIGHT = { bigClip: 0.25, bigMean: 200, smallClip: 0.06, smallMean: 175 };
 const SHARP = { big: 0.55, small: 0.8, smeared: 1.25, smearedBig: 0.9 };
 const SMEAR = { shake: 0.3, slow: 0.25, big: 0.45, alone: 0.45 };
 const GRAIN = { big: 4.5, small: 2.5, minIso: 800 };
+/** Phone exposures this long are almost always Night mode. */
+const NIGHT_MODE = 1 / 4;
 
 const ORDER: IssueKind[] = ["dark", "bright", "shake", "focus", "grain"];
 
@@ -34,7 +37,7 @@ export function findIssues(stats: ImageStats, meta?: PhotoMeta): Issue[] {
   );
   // Grain is mostly a side effect of the light; say so when both show up.
   const grainy = issues.find((i) => i.kind === "grain");
-  if (grainy && issues.some((i) => i.kind === "dark")) grainy.why += " Brightening a dark photo makes grain worse.";
+  if (grainy && issues.some((i) => i.kind === "dark")) grainy.why += " Both come from too little light.";
   return issues.sort(
     (a, b) => Number(b.severity === "big") - Number(a.severity === "big") || ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind),
   );
@@ -86,9 +89,12 @@ function bright(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
 
 function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   if (s.sharpness === null) return undefined;
-  // A shutter too slow to hand-hold makes shake likely, so a smaller smear is enough to call it.
-  const slow = slowShutter(meta);
-  const smeared = s.smear >= (slow ? SMEAR.slow : SMEAR.shake);
+  // Phones pick their own shutter speed, and Night mode stacks long exposures, so a slow shutter
+  // alone doesn't mean shake there. It still makes shake likely enough to lower the bar for a smear.
+  const phone = meta?.device?.kind === "phone";
+  const slow = phone ? undefined : slowShutter(meta);
+  const nightLong = phone && meta?.exposureTime !== undefined && meta.exposureTime >= NIGHT_MODE;
+  const smeared = s.smear >= (slow || nightLong ? SMEAR.slow : SMEAR.shake);
   // Shake can leave edges that run along it crisp, so a strong one-way smear counts on its own.
   const blurry = s.sharpness < SHARP.small || (smeared && s.sharpness < SHARP.smeared) || s.smear >= SMEAR.alone;
   if (!blurry) return undefined;
@@ -104,10 +110,12 @@ function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
     if (slow && shutter) {
       why.push(`${shutter} is slow to hold steady${focalText(meta)}. Aim for ${formatShutter(handHeldLimit(meta))} or faster.`);
     }
+    if (nightLong && shutter) why.push(`Night mode took ${shutter}, so the phone had to stay still that long.`);
   } else {
     why.push(big ? "Nothing in the photo is sharp." : "Even the sharpest part is a little soft.");
     if (slow === false && shutter) why.push(`At ${shutter} it isn't shake, so focus missed.`);
-    if (meta?.fNumber !== undefined && meta.fNumber <= 2.8) {
+    // A phone's small sensor keeps plenty sharp even at f/1.8, and its aperture can't be changed.
+    if (!phone && meta?.fNumber !== undefined && meta.fNumber <= 2.8) {
       why.push(`At ${formatAperture(meta.fNumber)} only a thin slice of the scene can be sharp.`);
     }
   }
@@ -137,10 +145,13 @@ function grain(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   };
 }
 
-/** The usual hand-held rule: 1 / (35mm-equivalent focal length) seconds. */
+/**
+ * The usual hand-held rule: 1 / (35mm-equivalent focal length) seconds. Stabilisation buys about
+ * two stops in practice (makers claim more, but that needs good technique).
+ */
 export function handHeldLimit(meta?: PhotoMeta): number {
   const focal = meta?.focalLength35 ?? (meta?.device?.kind === "camera" ? meta.focalLength : undefined);
-  return 1 / Math.max(focal ?? 30, 15);
+  return (isStabilized(meta?.device) ? 4 : 1) / Math.max(focal ?? 30, 15);
 }
 
 /** undefined when the shutter speed is unknown. */
