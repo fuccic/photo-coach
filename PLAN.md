@@ -17,7 +17,7 @@ Most beginners own a capable camera but shoot in Auto because the manual setting
 
 ### Who it's for
 - New owners of an interchangeable-lens or advanced compact camera.
-- Phone photographers who want to understand their "Pro" mode (stretch goal).
+- iPhone photographers who want better shots without leaving the Camera app (in the MVP, starting with the iPhone 18 Pro).
 
 ### What it is not (for now)
 - Not a photo editor. We won't fix the photo, we teach how to take a better one next time.
@@ -27,8 +27,8 @@ Most beginners own a capable camera but shoot in Auto because the manual setting
 
 ## 2. Core user flow
 
-1. **Upload** one or more photos (JPEG first, then HEIC and RAW).
-2. App reads EXIF and detects the camera body and lens.
+1. **Upload** one or more photos (JPEG and HEIC from day one, since iPhones save HEIC by default; RAW and ProRAW later).
+2. App reads EXIF and detects the camera body and lens (or, for a phone, which of its lenses was used).
 3. **Analysis results** screen: a short score card (Exposure, Focus/Sharpness, Motion blur, Noise, White balance, Composition), each with a traffic-light status.
 4. Tap an issue to see the **"What happened / What to change / How to do it on your camera"** card.
 5. Optional: **Before you shoot** cheat sheet for the camera ("Shooting kids indoors on your Sony a6400").
@@ -53,7 +53,7 @@ Most beginners own a capable camera but shoot in Auto because the manual setting
   - **Noise:** ISO vs. sensor size, plus a noise estimate in flat regions.
   - **Tilt:** horizon line detection.
 - Recommendations as generic settings ("raise shutter speed to 1/250s").
-- Camera instructions for **one model** to prove the format: the **Sony α7 II (ILCE-7M2)**. See section 3.1.
+- Instructions for **two devices** to prove the format works for both a dedicated camera and a phone: the **Sony α7 II (ILCE-7M2)** and the **iPhone 18 Pro**. See sections 3.1 and 3.2.
 - No accounts; everything stays in the browser.
 
 **Exit criteria:** on the test set, at least 80% of the main issues are correctly flagged and a beginner can follow the instruction card without help.
@@ -69,6 +69,23 @@ The MVP targets the Sony α7 II, so the instruction format, the settings solver,
 
 Once the α7 II works end to end, the next models are other Sony bodies (α7 III, α6000 series), then other brands.
 
+### 3.2 First phone: iPhone 18 Pro
+
+The second MVP device is the iPhone 18 Pro, which forces the instruction model to handle a phone as well as a camera. The two need different kinds of advice:
+
+| | Sony α7 II | iPhone 18 Pro (stock Camera app) |
+|---|---|---|
+| Shutter / ISO | Set directly with the mode dial and front/rear dials | **Not directly settable.** The phone picks them; we influence them indirectly |
+| What we can tell users to change | Shutter, aperture, ISO, focus mode, AF area, stabilization | Exposure slider, tap to focus, focus/exposure lock (long-press), lens choice (0.5x / 1x / 2x / tele), Night mode and its timer, flash, Portrait mode, Photographic Styles, ProRAW on/off, the Camera Control button |
+| Typical fix for blur | "Use 1/250s" | "Hold steady or brace your arms, switch to 1x for more light, keep Night mode's timer short, or use a tripod" |
+| Metadata | Rich Sony MakerNotes | Standard EXIF (shutter, ISO, focal length, lens) plus limited Apple MakerNotes; much is computed by Apple's processing and not recorded |
+
+What this means for the build:
+- **The instruction schema needs "levers", not just settings.** A recommendation like "faster shutter speed" must turn into dial steps on the Sony and into indirect actions on the iPhone (better light, steadier grip, a different lens, a shorter Night mode).
+- **Optional "manual mode" track.** Third-party apps (for example Halide or Lightroom's camera) expose real shutter and ISO control. We can suggest one for users who want it, but default advice stays in the stock Camera app.
+- **Computational photography muddies the analysis.** Smart HDR, Deep Fusion and Night mode merge several frames, so the EXIF shutter speed isn't the whole story and noise or sharpness look different from a single exposure. Thresholds need separate calibration for iPhone photos.
+- **Exact controls need checking on a real device.** This plan was written without first-hand iPhone 18 Pro specs. Lens lineup, Camera Control behaviour, and menu paths should be verified before writing its instruction entries.
+
 ### Phase 2: AI-assisted analysis and explanations (3 to 4 weeks)
 - Add a vision-language model (Claude) to look at the photo plus the computed metrics and EXIF, to:
   - Catch things rules miss (focus landed on the background instead of the face, backlit subject, mixed lighting).
@@ -77,8 +94,8 @@ Once the α7 II works end to end, the next models are other Sony bodies (α7 III
 - Subject detection (face/eye, main subject) so focus checks look in the right place.
 
 ### Phase 3: Camera instruction database (ongoing, starts in Phase 1)
-- Structured data per camera model: dials, buttons, menu paths, mode names, ISO/shutter ranges, focus modes.
-- Start with Sony (α7 II first), then grow to the **top ~30 beginner bodies** across Canon, Sony, Nikon, Fujifilm, Panasonic, and OM System.
+- Structured data per device: dials, buttons, menu paths, mode names, ISO/shutter ranges, focus modes, and for phones the on-screen controls and gestures. Each recommendation maps to device-specific "levers" (see 3.2).
+- Start with the Sony α7 II and iPhone 18 Pro, then other Sony bodies and recent iPhones, then grow to the **top ~30 beginner bodies** across Canon, Sony, Nikon, Fujifilm, Panasonic, and OM System.
 - Graceful fallback for unknown models: brand-level generic instructions plus "check your manual, page X" search.
 - A contribution flow (internal admin form at first) so we can add models without code changes.
 
@@ -87,9 +104,9 @@ Once the α7 II works end to end, the next models are other Sony bodies (α7 III
 - Per-camera cheat sheets and short lessons linked from each issue.
 
 ### Phase 5: Polish and expansion
-- RAW and HEIC support, batch uploads.
+- RAW and ProRAW support, batch uploads.
 - Mobile app (or PWA) so you can check photos right after shooting.
-- Phone "Pro mode" guidance (iPhone, Pixel, Samsung).
+- More phones: older iPhones, then Pixel and Samsung (their "Pro" modes do expose shutter and ISO).
 - Possibly a live "pre-shot" helper that suggests settings for a scene before you shoot.
 
 ---
@@ -145,7 +162,8 @@ Ranked from hardest to easiest.
 - **Mitigation:** a small "settings solver" that takes the current exposure, the problem, and camera/lens limits, and proposes one or two balanced options with the trade-off spelled out.
 
 ### 5.6 Smaller but real
-- **File formats:** HEIC and RAW decoding in the browser is heavy; plan to do it server-side.
+- **File formats:** HEIC is needed from day one for iPhone photos, and browser support is uneven, so decode it with a library (e.g. libheif via WebAssembly) or server-side. RAW/ProRAW decoding is heavy and belongs server-side.
+- **iPhone EXIF gets lost easily:** AirDrop and the Photos app keep it, but sharing through Messages, WhatsApp, or social apps often strips or compresses it. Upload instructions should tell iPhone users how to export with metadata intact.
 - **Privacy:** photos include GPS and faces. Default to local processing, strip GPS before upload, and be explicit about storage.
 - **AI cost and latency:** vision calls on every photo add up. Use rules first, call the model only for summaries and ambiguous cases, and cache results.
 - **Beginner-friendly language:** the hard part is writing, not code. Every message needs a "what it means" line without jargon.
@@ -156,7 +174,7 @@ Ranked from hardest to easiest.
 
 1. **Platform first:** web app, or mobile from day one? (Recommendation: responsive web/PWA first.)
 2. ~~**Which cameras for the MVP?**~~ Decided: Sony α7 II first (see 3.1).
-3. **Phones in scope?** Phone photos have rich EXIF but few manual controls. Include in MVP or later?
+3. ~~**Phones in scope?**~~ Decided: yes, iPhone 18 Pro in the MVP (see 3.2).
 4. **Accounts and storage:** is a fully local, no-login MVP acceptable?
 5. **Monetization:** free, freemium (X analyses per month), or one-time purchase? Affects how much AI usage we can afford.
 6. **Test photos:** can you supply a starter set of your own "bad" photos with EXIF intact?
@@ -169,4 +187,5 @@ Ranked from hardest to easiest.
 2. Scaffold the Next.js app and CI (Phase 0).
 3. Build the EXIF reader and the first two analyzers (exposure, blur) behind the upload screen.
 4. Draft the camera database schema and fill in the Sony α7 II entry.
-5. Build the test photo set around α7 II shots (yours if possible) with EXIF intact.
+5. Build the test photo set around α7 II and iPhone 18 Pro shots (yours if possible) with EXIF intact.
+6. Check the iPhone 18 Pro's camera controls on a real device before writing its instruction entry.
