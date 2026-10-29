@@ -6,8 +6,8 @@ import type { ShootingMode } from "../exif";
  * Cameras and phones have different levers, because the iPhone's Camera app has no ISO or
  * shutter control (PLAN.md 3.2).
  *
- * To add a model: copy the closest guide, change its controls, steps and limits, and register it
- * in ./index.ts. TypeScript checks that every lever has steps.
+ * To add a model: copy the closest model file, change its match rule, controls, steps and limits,
+ * and add it to MODELS in ./index.ts. TypeScript checks that every lever has steps.
  */
 
 /** Things you can set directly on a camera. */
@@ -31,8 +31,10 @@ export type Step = {
   text: string;
   /** The control to highlight on the diagram, a key of the guide's `diagram.controls`. */
   control?: string;
-  /** Written from older models or app versions and not yet checked on this one. */
+  /** Not yet checked on this model. The guide's `assumedNote` says where it came from. */
   assumed?: true;
+  /** Only in these modes, for controls that change job with the mode (Canon's main dial). */
+  modes?: ShootingMode[];
 };
 
 export type Control = {
@@ -64,6 +66,8 @@ type GuideBase = {
   /** True for the fallback guides used when we don't know the model. */
   generic?: true;
   diagram?: Diagram;
+  /** Footnote for `assumed` steps, such as "From older iPhones, not yet checked on the iPhone 18 Pro." */
+  assumedNote?: string;
 };
 
 export type CameraGuide = GuideBase & {
@@ -88,3 +92,14 @@ export type PhoneGuide = GuideBase & {
 };
 
 export type Guide = CameraGuide | PhoneGuide;
+
+/** One supported model: how to recognise its photos, and its guide. */
+export type Model = {
+  name: string;
+  /** Gets EXIF Make and Model upper-cased and trimmed. */
+  match: (make: string, model: string) => boolean;
+  /** In-body stabilisation, which lets a camera be hand-held at slower shutter speeds. */
+  stabilized?: true;
+  guide: Guide;
+};
+

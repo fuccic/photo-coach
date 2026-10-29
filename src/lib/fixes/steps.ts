@@ -3,12 +3,19 @@ import { formatAperture, formatExposureComp, formatIso, formatShutter } from "..
 import type { Guide, Step } from "../instructions";
 import type { Action, Change, Fix } from "./solver";
 
-/** The fix as numbered one-line steps for this device. */
-export function stepsFor(fix: Fix, guide: Guide): Step[] {
+/**
+ * The fix as numbered one-line steps for this device. `mode` is the mode the photo was taken in;
+ * steps tied to a mode follow it, and any mode change the fix makes along the way.
+ */
+export function stepsFor(fix: Fix, guide: Guide, mode?: ShootingMode): Step[] {
+  let current = mode;
   return fix.actions.flatMap((action) => {
+    if (action.lever === "mode" && typeof action.value === "string") current = action.value;
     const recipe = (guide.levers as Record<string, Step[]>)[action.lever] ?? [];
     const value = action.value === undefined ? "" : formatValue(action, guide);
-    return recipe.map((s) => ({ ...s, text: s.text.replace("{value}", value) }));
+    return recipe
+      .filter((s) => !s.modes || (current !== undefined && s.modes.includes(current)))
+      .map((s) => ({ ...s, text: s.text.replace("{value}", value) }));
   });
 }
 

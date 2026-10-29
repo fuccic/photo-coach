@@ -1,3 +1,5 @@
+import { MODELS, type Model } from "./instructions";
+
 export type DeviceKind = "camera" | "phone";
 
 export type Device = {
@@ -8,28 +10,16 @@ export type Device = {
   supported: boolean;
 };
 
-type KnownDevice = Omit<Device, "supported"> & {
-  match: (make: string, model: string) => boolean;
-  /** In-body stabilisation, which lets a camera be hand-held at slower shutter speeds. */
-  stabilized?: true;
-};
+type KnownDevice = Omit<Device, "supported"> & Pick<Model, "match" | "stabilized">;
 
-// The MVP devices (see PLAN.md 3.1 and 3.2). Add new models here.
-export const KNOWN_DEVICES: KnownDevice[] = [
-  {
-    id: "sony-ilce-7m2",
-    name: "Sony α7 II",
-    kind: "camera",
-    match: (make, model) => make.startsWith("SONY") && model === "ILCE-7M2",
-    stabilized: true,
-  },
-  {
-    id: "apple-iphone-18-pro",
-    name: "iPhone 18 Pro",
-    kind: "phone",
-    match: (make, model) => make.startsWith("APPLE") && model === "IPHONE 18 PRO",
-  },
-];
+// One per model file in lib/instructions, so a supported device always has a guide.
+export const KNOWN_DEVICES: KnownDevice[] = MODELS.map(({ name, match, stabilized, guide }) => ({
+  id: guide.id,
+  name,
+  kind: guide.kind,
+  match,
+  stabilized,
+}));
 
 /** True for supported cameras with in-body stabilisation. Looked up by id, so photos saved earlier get it too. */
 export function isStabilized(device: Device | null | undefined): boolean {

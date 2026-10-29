@@ -13,7 +13,9 @@ import { SettingChips } from "@/components/SettingChips";
 import { TopBar } from "@/components/TopBar";
 import type { PhotoMeta } from "@/lib/exif";
 import { formatExposureComp, formatFocal } from "@/lib/format";
+import { guideFor } from "@/lib/instructions";
 
+// What the photo screen calls each mode when the camera's own names aren't known.
 const MODE_NAMES: Record<NonNullable<PhotoMeta["mode"]>, string> = {
   manual: "M",
   program: "P",
@@ -21,6 +23,14 @@ const MODE_NAMES: Record<NonNullable<PhotoMeta["mode"]>, string> = {
   shutter: "S",
   other: "Scene",
 };
+
+/** The mode as the camera's dial names it: "Av" on a Canon, "A" on a Sony. */
+function modeName(meta: PhotoMeta): string | undefined {
+  if (!meta.mode) return undefined;
+  const guide = guideFor(meta.device);
+  if (guide.kind === "camera" && !guide.generic && meta.mode !== "other") return guide.modeNames[meta.mode];
+  return MODE_NAMES[meta.mode];
+}
 
 export default function PhotoReview() {
   const { id } = useParams<{ id: string }>();
@@ -71,7 +81,7 @@ function Review({ id }: { id: string }) {
   const details = meta
     ? [
         { label: "Focal length", value: formatFocal(meta.focalLength35 ?? meta.focalLength) },
-        { label: "Mode", value: meta.mode ? MODE_NAMES[meta.mode] : undefined },
+        { label: "Mode", value: modeName(meta) },
         { label: "Exposure", value: formatExposureComp(meta.exposureComp) },
         { label: "Flash", value: meta.flashFired === undefined ? undefined : meta.flashFired ? "On" : "Off" },
       ].filter((d) => d.value)

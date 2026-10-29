@@ -42,7 +42,7 @@ function FixSteps({ id, kind }: { id: string; kind: string }) {
 
   const { fix, guide } = solved;
   const device = photo.meta?.device;
-  const steps = stepsFor(fix, guide);
+  const steps = stepsFor(fix, guide, photo.meta?.mode);
   const current = steps.findIndex((_, i) => !done[i]);
   const allDone = current === -1;
   const assumed = steps.some((s) => s.assumed);
@@ -110,7 +110,7 @@ function FixSteps({ id, kind }: { id: string; kind: string }) {
           </Link>
 
           <p className="px-2 text-xs text-muted">
-            {assumed ? `* From older ${device?.kind === "phone" ? "iPhones" : "models"}, not yet checked on the ${device?.name}. ` : ""}
+            {assumed ? `* ${guide.assumedNote ?? `From older models, not yet checked on the ${device?.name}.`} ` : ""}
             {guide.source}
           </p>
         </div>
