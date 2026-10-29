@@ -13,6 +13,7 @@ export const iphone18Pro: Model = {
     id: "apple-iphone-18-pro",
     kind: "phone",
     source: "iPhone Camera app, no extra apps needed.",
+    manual: { url: "https://support.apple.com/guide/iphone/welcome/ios", title: "iPhone User Guide" },
     assumedNote: "From older iPhones, not yet checked on the iPhone 18 Pro.",
     diagram: {
       body: "phone",

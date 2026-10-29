@@ -1,11 +1,15 @@
-import type { Model } from "./types";
+import type { ManualLink, Model } from "./types";
 
 /*
  * Sony α7 II (ILCE-7M2) with factory button settings. Checked against Sony's Help Guide
  * (helpguide.sony.net/ilc/1450): in M the front dial sets aperture and the rear dial the shutter
- * ([Dial Setup] default), exposure compensation has its own dial, and Focus Mode / Focus Area are
- * in the Fn menu. C1 to C4 are user-assignable, so steps never use them.
+ * ([Dial Setup] default), in S either dial sets the shutter, ISO is on the right of the control
+ * wheel (DISP top, drive mode left), exposure compensation has its own dial, and Focus Mode /
+ * Focus Area are in the Fn menu. C1 to C4 are user-assignable, so steps never use them.
  */
+const HELP_GUIDE = "https://helpguide.sony.net/ilc/1450/v1/en";
+const topic = (id: string, label: string): ManualLink => ({ url: `${HELP_GUIDE}/contents/${id}.html`, label });
+
 export const sonyA7ii: Model = {
   name: "Sony α7 II",
   match: (make, model) => make.startsWith("SONY") && model === "ILCE-7M2",
@@ -14,6 +18,7 @@ export const sonyA7ii: Model = {
     id: "sony-ilce-7m2",
     kind: "camera",
     source: "Sony α7 II Help Guide, factory button settings",
+    manual: { url: `${HELP_GUIDE}/index.html`, title: "Sony α7 II Help Guide" },
     modeNames: { program: "P", aperture: "A", shutter: "S", manual: "M" },
     limits: { isoMin: 100, isoMax: 6400, shutterMin: 1 / 8000, evMax: 3 },
     diagram: {
@@ -32,21 +37,21 @@ export const sonyA7ii: Model = {
       },
     },
     levers: {
-      mode: [{ text: "Mode dial to {value}", control: "modeDial" }],
+      mode: [{ text: "Mode dial to {value}", control: "modeDial", manual: topic("TP0000301839", "Mode dial") }],
       iso: [
-        { text: "Press ISO on the wheel", control: "wheelRight" },
+        { text: "Press ISO on the wheel", control: "wheelRight", manual: topic("TP0000386492", "ISO") },
         { text: "Turn the wheel to {value}", control: "wheel" },
         { text: "Press the center", control: "wheelCenter" },
       ],
-      shutter: [{ text: "Turn the rear dial to {value}", control: "rearDial" }],
-      aperture: [{ text: "Turn the front dial to {value}", control: "frontDial" }],
-      ev: [{ text: "Exposure dial to {value}", control: "evDial" }],
+      shutter: [{ text: "Turn the rear dial to {value}", control: "rearDial", manual: topic("TP0000226526", "Shutter Priority") }],
+      aperture: [{ text: "Turn the front dial to {value}", control: "frontDial", manual: topic("TP0000301843", "Aperture Priority") }],
+      ev: [{ text: "Exposure dial to {value}", control: "evDial", manual: topic("TP0000226569", "Exposure dial") }],
       focusMode: [
-        { text: "Press Fn", control: "fn" },
+        { text: "Press Fn", control: "fn", manual: topic("TP0000386486", "Focus Mode") },
         { text: "Focus Mode: AF-S", control: "wheel" },
       ],
-      focusArea: [{ text: "Focus Area: Flexible Spot", control: "wheel" }],
-      halfPress: [{ text: "Half-press until the box goes green", control: "shutter" }],
+      focusArea: [{ text: "Focus Area: Flexible Spot", control: "wheel", manual: topic("TP0000390692", "Focus Area") }],
+      halfPress: [{ text: "Half-press until the box goes green", control: "shutter", manual: topic("TP0000314378", "Shooting") }],
     },
   },
 };

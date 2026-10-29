@@ -28,9 +28,25 @@ export default function Home() {
           <h2 className="text-sm font-medium text-muted">My cameras</h2>
           <ul className="flex flex-wrap gap-2">
             {KNOWN_DEVICES.map((d) => (
-              <li key={d.id} className="flex min-h-11 items-center gap-2 rounded-full bg-surface px-3.5 text-[15px]">
-                <DeviceIcon device={{ ...d, supported: true }} size={18} />
-                {d.name}
+              <li key={d.id}>
+                {d.manual ? (
+                  <a
+                    href={d.manual.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${d.name}: open the ${d.manual.title}`}
+                    className="flex min-h-11 items-center gap-2 rounded-full bg-surface px-3.5 text-[15px] hover:bg-line"
+                  >
+                    <DeviceIcon device={{ ...d, supported: true }} size={18} />
+                    {d.name}
+                    <span className="text-[13px] text-muted">Manual</span>
+                  </a>
+                ) : (
+                  <span className="flex min-h-11 items-center gap-2 rounded-full bg-surface px-3.5 text-[15px]">
+                    <DeviceIcon device={{ ...d, supported: true }} size={18} />
+                    {d.name}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

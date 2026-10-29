@@ -70,7 +70,9 @@ A few rules of thumb to try:
 
 - **Sony α7 II** (ILCE-7M2): JPEG and RAW (ARW)
 - **iPhone 18 Pro**: the Camera app's HEIC and JPEG photos. iPhone doesn't let you set shutter or ISO directly, so its tips use what you *can* change: tap to focus, the brightness slider, lens choice and Night mode.
-- **Canon Rebel XT** (EOS 350D, Kiss Digital N): JPEG. Steps come from Canon's manual; a few key positions are marked * until checked on a real camera. Its RAW files (CR2) aren't supported yet.
+- **Canon Rebel XT** (EOS 350D, Kiss Digital N): JPEG. Steps come from Canon's manual. Its RAW files (CR2) aren't supported yet.
+
+Each fix-it step links to the page of the maker's manual it comes from (Sony's online Help Guide, Canon's PDF manual), and My cameras on the home screen opens each device's whole manual.
 
 Photos from other cameras still show their settings; step-by-step button instructions come camera by camera. To add one, copy a file in `src/lib/instructions/` and add it to `MODELS` in `src/lib/instructions/index.ts`. See [PLAN.md](PLAN.md) for the roadmap.
 

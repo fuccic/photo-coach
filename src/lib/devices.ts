@@ -10,7 +10,7 @@ export type Device = {
   supported: boolean;
 };
 
-type KnownDevice = Omit<Device, "supported"> & Pick<Model, "match" | "stabilized">;
+type KnownDevice = Omit<Device, "supported"> & Pick<Model, "match" | "stabilized"> & { manual?: Model["guide"]["manual"] };
 
 // One per model file in lib/instructions, so a supported device always has a guide.
 export const KNOWN_DEVICES: KnownDevice[] = MODELS.map(({ name, match, stabilized, guide }) => ({
@@ -19,6 +19,7 @@ export const KNOWN_DEVICES: KnownDevice[] = MODELS.map(({ name, match, stabilize
   kind: guide.kind,
   match,
   stabilized,
+  manual: guide.manual,
 }));
 
 /** True for supported cameras with in-body stabilisation. Looked up by id, so photos saved earlier get it too. */

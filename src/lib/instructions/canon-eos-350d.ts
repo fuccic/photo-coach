@@ -1,13 +1,17 @@
-import type { Model } from "./types";
+import type { ManualLink, Model } from "./types";
 
 /*
- * Canon EOS Digital Rebel XT (EOS 350D, Kiss Digital N), 2005. Checked against the Canon EOS 350D
- * instruction manual: ISO and AF mode are on the cross keys, picked with ◀ ▶ and confirmed with
- * SET (p. 55, 70); exposure compensation is the Av± button held while turning the main dial, ±2
- * in third stops, in P, Tv and Av (p. 89); in M the main dial sets the shutter and Av± plus the
- * main dial the aperture (p. 86). No in-body stabilisation and no live view. Which cross key is
- * which, and the focus beep, are marked `assumed` until checked on the camera.
+ * Canon EOS Digital Rebel XT (EOS 350D, Kiss Digital N), 2005. Checked against Canon's EOS 350D
+ * instruction manual: ISO is the ▲ cross key and AF mode the ▶ cross key (p. 13, 18), each
+ * opening a menu where ▲ ▼ pick and SET confirms (p. 55, 70); exposure compensation is the Av±
+ * button held while turning the main dial, ±2 in third stops, in P, Tv and Av (p. 89); in M the
+ * main dial sets the shutter and Av± plus the main dial the aperture (p. 86). In P, Tv, Av and M
+ * the camera doesn't beep on focus, so the steps use the viewfinder's focus light (p. 71). No
+ * in-body stabilisation and no live view. The PDF's page numbers match the printed ones.
  */
+const MANUAL = "https://gdlp01.c-wss.com/gds/8/0900000278/01/EOSDRXT350DIM-EN.pdf";
+const page = (n: number): ManualLink => ({ url: `${MANUAL}#page=${n}`, label: `p. ${n}` });
+
 export const canonRebelXt: Model = {
   name: "Canon Rebel XT",
   match: (make, model) =>
@@ -16,7 +20,7 @@ export const canonRebelXt: Model = {
     id: "canon-eos-350d",
     kind: "camera",
     source: "Canon EOS 350D / Rebel XT instruction manual",
-    assumedNote: "Not yet checked on a real Rebel XT.",
+    manual: { url: MANUAL, title: "Canon EOS 350D / Rebel XT instruction manual" },
     modeNames: { program: "P", aperture: "Av", shutter: "Tv", manual: "M" },
     // ISO 1600 is the top of the range on this sensor.
     limits: { isoMin: 100, isoMax: 1600, shutterMin: 1 / 4000, evMax: 2 },
@@ -36,29 +40,29 @@ export const canonRebelXt: Model = {
       },
     },
     levers: {
-      mode: [{ text: "Mode dial to {value}", control: "modeDial" }],
+      mode: [{ text: "Mode dial to {value}", control: "modeDial", manual: page(16) }],
       iso: [
-        { text: "Press ISO on the cross keys", control: "crossUp", assumed: true },
-        { text: "Press ◀ or ▶ to {value}", control: "cross" },
+        { text: "Press ISO (▲) on the cross keys", control: "crossUp", manual: page(55) },
+        { text: "Press ▲ or ▼ to {value}", control: "cross" },
         { text: "Press SET", control: "set" },
       ],
-      shutter: [{ text: "Turn the main dial to {value}", control: "mainDial" }],
+      shutter: [{ text: "Turn the main dial to {value}", control: "mainDial", manual: page(82) }],
       // The main dial sets the aperture in Av, but the shutter in M, where Av± switches it over.
       aperture: [
-        { text: "Turn the main dial to {value}", control: "mainDial", modes: ["aperture"] },
-        { text: "Hold Av±, turn the main dial to {value}", control: "avButton", modes: ["manual"] },
+        { text: "Turn the main dial to {value}", control: "mainDial", modes: ["aperture"], manual: page(84) },
+        { text: "Hold Av±, turn the main dial to {value}", control: "avButton", modes: ["manual"], manual: page(86) },
       ],
-      ev: [{ text: "Hold Av±, turn the main dial to {value}", control: "avButton" }],
+      ev: [{ text: "Hold Av±, turn the main dial to {value}", control: "avButton", manual: page(89) }],
       focusMode: [
-        { text: "Lens switch to AF" },
-        { text: "Press AF on the cross keys", control: "crossRight", assumed: true },
-        { text: "Pick ONE SHOT, press SET", control: "set" },
+        { text: "Lens switch to AF", manual: page(70) },
+        { text: "Press AF (▶) on the cross keys", control: "crossRight" },
+        { text: "Pick ONE SHOT with ▲ ▼, press SET", control: "set" },
       ],
       focusArea: [
-        { text: "Press the AF point button", control: "afPoint" },
+        { text: "Press the AF point button", control: "afPoint", manual: page(73) },
         { text: "Press SET until only the center lights", control: "set" },
       ],
-      halfPress: [{ text: "Half-press until it beeps", control: "shutter", assumed: true }],
+      halfPress: [{ text: "Half-press until the focus light shows", control: "shutter", manual: page(71) }],
     },
   },
 };
