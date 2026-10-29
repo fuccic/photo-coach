@@ -35,6 +35,15 @@ export type Step = {
   assumed?: true;
   /** Only in these modes, for controls that change job with the mode (Canon's main dial). */
   modes?: ShootingMode[];
+  /** The page of the maker's manual that covers this step, linked next to it. */
+  manual?: ManualLink;
+};
+
+/** A page of the maker's own manual. */
+export type ManualLink = {
+  url: string;
+  /** What the link says: the Help Guide topic ("ISO") or the page ("p. 55"). */
+  label: string;
 };
 
 export type Control = {
@@ -63,6 +72,8 @@ type GuideBase = {
   id: string;
   /** Where the steps come from, shown in small print. */
   source: string;
+  /** The maker's manual for the whole device, linked from My cameras and the source line. */
+  manual?: { url: string; title: string };
   /** True for the fallback guides used when we don't know the model. */
   generic?: true;
   diagram?: Diagram;

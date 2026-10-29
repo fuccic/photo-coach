@@ -170,7 +170,7 @@ describe("solveFix on the Canon Rebel XT", () => {
       { setting: "shutter", from: 1 / 15, to: 1 / 125 },
       { setting: "iso", from: 800, to: 1600 },
     ]);
-    expect(steps).toEqual(["Turn the main dial to 1/125", "Press ISO on the cross keys", "Press ◀ or ▶ to 1600", "Press SET"]);
+    expect(steps).toEqual(["Turn the main dial to 1/125", "Press ISO (▲) on the cross keys", "Press ▲ or ▼ to 1600", "Press SET"]);
   });
 
   it("names the modes as the Canon dial does", () => {
@@ -192,7 +192,7 @@ describe("solveFix on the Canon Rebel XT", () => {
     expect(steps).toEqual(["Mode dial to Av", "Hold Av±, turn the main dial to -2"]);
   });
 
-  it("highlights a real control for every step it highlights, and marks unchecked key positions", () => {
+  it("highlights a real control for every step it highlights", () => {
     const guide = guideFor(canon);
     for (const mode of ["program", "aperture", "shutter", "manual"] as const) {
       for (const kind of ["dark", "bright", "shake", "focus", "grain"] as const) {
@@ -204,7 +204,46 @@ describe("solveFix on the Canon Rebel XT", () => {
         }
       }
     }
-    expect(guide.kind === "camera" && guide.levers.iso[0].assumed).toBe(true);
+  });
+});
+
+describe("manual links", () => {
+  const cameras = [sony, identifyDevice("Canon", "Canon EOS DIGITAL REBEL XT")].map((d) => guideFor(d));
+
+  it("link every camera step group to its own page of the maker's manual", () => {
+    for (const guide of cameras) {
+      if (guide.kind !== "camera") throw new Error(guide.id);
+      expect(guide.manual?.url, guide.id).toMatch(/^https:\/\//);
+      for (const [lever, steps] of Object.entries(guide.levers)) {
+        const links = steps.filter((s) => s.manual);
+        expect(links.length, `${guide.id} ${lever}`).toBeGreaterThan(0);
+        for (const { manual } of links) expect(manual!.url.startsWith(guide.manual!.url.replace(/index\.html$/, "")), manual!.url).toBe(true);
+      }
+      expect(Object.values(guide.levers).flat().some((s) => s.assumed), guide.id).toBe(false);
+    }
+  });
+
+  it("deep-links Sony Help Guide topics and Canon PDF pages", () => {
+    const [a7, rebel] = cameras;
+    if (a7.kind !== "camera" || rebel.kind !== "camera") throw new Error();
+    expect(a7.levers.iso[0].manual).toEqual({ url: "https://helpguide.sony.net/ilc/1450/v1/en/contents/TP0000386492.html", label: "ISO" });
+    expect(rebel.levers.iso[0].manual).toEqual({
+      url: "https://gdlp01.c-wss.com/gds/8/0900000278/01/EOSDRXT350DIM-EN.pdf#page=55",
+      label: "p. 55",
+    });
+  });
+
+  it("carries the step's link through to the fix, once per setting", () => {
+    const canon = identifyDevice("Canon", "Canon EOS DIGITAL REBEL XT");
+    const guide = guideFor(canon);
+    const m = meta({ device: canon, mode: "manual", fNumber: 1.8 });
+    const steps = stepsFor(solveFix(issue("focus"), m, stats(50), guide), guide, m.mode);
+    expect(steps[0].manual?.label).toBe("p. 86");
+    expect(steps.filter((s) => s.manual?.label === "p. 70")).toHaveLength(1);
+  });
+
+  it("shows each device's manual on My cameras", () => {
+    for (const d of KNOWN_DEVICES) expect(d.manual?.url, d.id).toMatch(/^https:\/\//);
   });
 });
 

@@ -9,6 +9,7 @@ import { usePhotoIssues } from "@/components/Issues";
 import { usePhotos } from "@/components/PhotosProvider";
 import { TopBar } from "@/components/TopBar";
 import { stepsFor } from "@/lib/fixes/steps";
+import type { ManualLink as StepManual } from "@/lib/instructions";
 
 export default function ShowMeHow() {
   const { id, kind } = useParams<{ id: string; kind: string }>();
@@ -73,12 +74,12 @@ function FixSteps({ id, kind }: { id: string; kind: string }) {
         <div className="flex flex-col gap-4 md:pt-2">
           <ol aria-label="Steps" className="flex flex-col gap-1.5 px-2">
             {steps.map((s, i) => (
-              <li key={i}>
+              <li key={i} className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => toggle(i)}
                   aria-pressed={!!done[i]}
-                  className="flex min-h-[52px] w-full items-center gap-3.5 py-1.5 text-left"
+                  className="flex min-h-[52px] grow items-center gap-3.5 py-1.5 text-left"
                 >
                   <span
                     className={`flex size-9 shrink-0 items-center justify-center rounded-full border-2 text-[15px] font-bold ${
@@ -96,6 +97,7 @@ function FixSteps({ id, kind }: { id: string; kind: string }) {
                     )}
                   </span>
                 </button>
+                {s.manual && <ManualLink link={s.manual} />}
               </li>
             ))}
           </ol>
@@ -111,11 +113,41 @@ function FixSteps({ id, kind }: { id: string; kind: string }) {
 
           <p className="px-2 text-xs text-muted">
             {assumed ? `* ${guide.assumedNote ?? `From older models, not yet checked on the ${device?.name}.`} ` : ""}
-            {guide.source}
+            {guide.manual ? (
+              <a href={guide.manual.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                {guide.source}
+              </a>
+            ) : (
+              guide.source
+            )}
           </p>
         </div>
       </main>
     </>
+  );
+}
+
+/** The manual page for a step, opened in a new tab so the steps stay where they were. */
+function ManualLink({ link }: { link: StepManual }) {
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Manual: ${link.label}`}
+      className="flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-surface px-3 text-[13px] font-medium text-muted hover:text-ink"
+    >
+      <BookIcon />
+      {link.label}
+    </a>
+  );
+}
+
+function BookIcon() {
+  return (
+    <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7" />
+    </svg>
   );
 }
 
