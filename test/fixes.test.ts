@@ -23,7 +23,7 @@ const stats = (meanLuma: number) => ({ meanLuma }) as ImageStats;
 function fixFor(kind: IssueKind, m: PhotoMeta, s?: ImageStats) {
   const guide = guideFor(m.device);
   const fix = solveFix(issue(kind), m, s, guide);
-  return { fix, steps: stepsFor(fix, guide).map((st) => st.text) };
+  return { fix, steps: stepsFor(fix, guide, m.mode).map((st) => st.text) };
 }
 
 describe("solveFix on the Sony α7 II", () => {
@@ -154,6 +154,60 @@ describe("solveFix on the iPhone 18 Pro", () => {
   });
 });
 
+describe("solveFix on the Canon Rebel XT", () => {
+  const canon = identifyDevice("Canon", "Canon EOS DIGITAL REBEL XT");
+  const rebel = (over: Partial<PhotoMeta> = {}) => meta({ device: canon, ...over });
+
+  it("brightens with Av± and the main dial, within its ±2 range", () => {
+    const { fix, steps } = fixFor("dark", rebel({ exposureTime: 1 / 250 }), stats(30));
+    expect(fix.changes).toEqual([{ setting: "ev", from: undefined, to: 2 }]);
+    expect(steps).toEqual(["Hold Av±, turn the main dial to +2"]);
+  });
+
+  it("never suggests ISO above 1600", () => {
+    const { fix, steps } = fixFor("shake", rebel({ mode: "shutter", iso: 800, exposureTime: 1 / 15 }));
+    expect(fix.changes).toEqual([
+      { setting: "shutter", from: 1 / 15, to: 1 / 125 },
+      { setting: "iso", from: 800, to: 1600 },
+    ]);
+    expect(steps).toEqual(["Turn the main dial to 1/125", "Press ISO on the cross keys", "Press ◀ or ▶ to 1600", "Press SET"]);
+  });
+
+  it("names the modes as the Canon dial does", () => {
+    expect(fixFor("shake", rebel({ mode: "program" })).steps[0]).toBe("Mode dial to Tv");
+    expect(fixFor("focus", rebel({ mode: "program", fNumber: 1.8 })).steps.slice(0, 2)).toEqual([
+      "Mode dial to Av",
+      "Turn the main dial to f/3.5",
+    ]);
+  });
+
+  it("uses Av± for the aperture in M, where the main dial sets the shutter", () => {
+    const { steps } = fixFor("focus", rebel({ mode: "manual", fNumber: 1.8 }));
+    expect(steps.slice(0, 1)).toEqual(["Hold Av±, turn the main dial to f/3.5"]);
+    expect(steps).toContain("Press the AF point button");
+  });
+
+  it("switches M to Av for exposure compensation", () => {
+    const { steps } = fixFor("bright", rebel({ mode: "manual", iso: undefined }), stats(220));
+    expect(steps).toEqual(["Mode dial to Av", "Hold Av±, turn the main dial to -2"]);
+  });
+
+  it("highlights a real control for every step it highlights, and marks unchecked key positions", () => {
+    const guide = guideFor(canon);
+    for (const mode of ["program", "aperture", "shutter", "manual"] as const) {
+      for (const kind of ["dark", "bright", "shake", "focus", "grain"] as const) {
+        const m = rebel({ mode, fNumber: 2 });
+        const steps = stepsFor(solveFix(issue(kind), m, stats(50), guide), guide, m.mode);
+        expect(steps.length, `${kind} in ${mode}`).toBeGreaterThan(0);
+        for (const step of steps) {
+          if (step.control) expect(guide.diagram?.controls[step.control], step.text).toBeDefined();
+        }
+      }
+    }
+    expect(guide.kind === "camera" && guide.levers.iso[0].assumed).toBe(true);
+  });
+});
+
 describe("guideFor", () => {
   it("has a guide for every supported device", () => {
     for (const d of KNOWN_DEVICES) expect(guideFor(identifyDevice(...exifFor(d.id)))?.id).toBe(d.id);
@@ -169,5 +223,10 @@ describe("guideFor", () => {
 });
 
 function exifFor(id: string): [string, string] {
-  return id === "sony-ilce-7m2" ? ["SONY", "ILCE-7M2"] : ["Apple", "iPhone 18 Pro"];
+  const exif: Record<string, [string, string]> = {
+    "sony-ilce-7m2": ["SONY", "ILCE-7M2"],
+    "apple-iphone-18-pro": ["Apple", "iPhone 18 Pro"],
+    "canon-eos-350d": ["Canon", "Canon EOS DIGITAL REBEL XT"],
+  };
+  return exif[id];
 }

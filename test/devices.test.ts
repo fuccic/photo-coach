@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { identifyDevice } from "@/lib/devices";
+import { identifyDevice, isStabilized } from "@/lib/devices";
 
 describe("identifyDevice", () => {
   it("knows the MVP devices", () => {
     expect(identifyDevice("SONY", "ILCE-7M2")?.supported).toBe(true);
     expect(identifyDevice("Apple", "iPhone 18 Pro")?.supported).toBe(true);
+  });
+
+  it("knows the Canon Rebel XT by all three of its names", () => {
+    for (const model of ["Canon EOS DIGITAL REBEL XT", "Canon EOS 350D DIGITAL", "Canon EOS Kiss Digital N"]) {
+      expect(identifyDevice("Canon", model), model).toEqual({ id: "canon-eos-350d", name: "Canon Rebel XT", kind: "camera", supported: true });
+    }
+    expect(identifyDevice("Canon", "Canon EOS DIGITAL REBEL XTi")?.supported).toBe(false);
+    expect(isStabilized(identifyDevice("Canon", "Canon EOS DIGITAL REBEL XT"))).toBe(false);
   });
 
   it("does not confuse close relatives", () => {
