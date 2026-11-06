@@ -1,5 +1,11 @@
-import { detectFormat } from "./fileTypes";
-import { extractEmbeddedJpeg } from "./rawPreview";
+import { detectFormat, isRaw } from "./fileTypes";
+import { extractRawPreview } from "./rawPreview";
+
+/**
+ * The RAW previews we use sit near the start of the file (within the first ~1 MB on Rebel XT CR2s
+ * and Lightroom DNGs), so read only this much first and fall back to the whole file (8-25 MB).
+ */
+const RAW_HEAD_BYTES = 4 * 1024 * 1024;
 
 /**
  * Makes something the browser can show: "original" when it can show the file itself, a JPEG for
@@ -8,9 +14,10 @@ import { extractEmbeddedJpeg } from "./rawPreview";
 export async function makePreview(file: Blob, fileName: string): Promise<Blob | "original" | null> {
   const format = detectFormat(fileName, file.type);
   try {
-    if (format === "arw") {
-      const jpeg = extractEmbeddedJpeg(await file.arrayBuffer());
-      return jpeg ? new Blob([jpeg.slice()], { type: "image/jpeg" }) : null;
+    if (isRaw(format)) {
+      let preview = file.size > RAW_HEAD_BYTES ? extractRawPreview(await file.slice(0, RAW_HEAD_BYTES).arrayBuffer(), true) : null;
+      preview ??= extractRawPreview(await file.arrayBuffer());
+      return preview ? new Blob([preview.jpeg.slice()], { type: "image/jpeg" }) : null;
     }
     if (format === "heic" && !(await canDecode(file))) {
       // Only Safari decodes HEIC natively; elsewhere convert in the browser. Loaded on demand (~1 MB).

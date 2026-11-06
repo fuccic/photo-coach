@@ -12,6 +12,7 @@ import { usePhotos, type Photo } from "@/components/PhotosProvider";
 import { SettingChips } from "@/components/SettingChips";
 import { TopBar } from "@/components/TopBar";
 import type { PhotoMeta } from "@/lib/exif";
+import { isRaw } from "@/lib/fileTypes";
 import { formatExposureComp, formatFocal } from "@/lib/format";
 import { guideFor } from "@/lib/instructions";
 
@@ -259,7 +260,11 @@ function Problems({
   if (issues === null) {
     return (
       <p className="rounded-[18px] bg-surface p-4 text-[15px] text-muted">
-        {photo.previewUrl === null ? "This browser can't open this file, so it can't be checked." : "This photo couldn't be checked."}
+        {photo.previewUrl !== null
+          ? "This photo couldn't be checked."
+          : isRaw(photo.format)
+            ? "This RAW file has no preview the app can read, so it can't be checked. Save it as a JPEG (in Lightroom or your camera's software) and add that."
+            : "This browser can't open this file, so it can't be checked."}
       </p>
     );
   }
