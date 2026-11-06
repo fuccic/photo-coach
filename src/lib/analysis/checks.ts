@@ -14,6 +14,8 @@ export type Issue = {
   why: string;
   /** Tile indices (see ImageStats.tiles) where the problem shows most. */
   area: number[];
+  /** Found on a photo that is meant to be mostly dark (see isDarkScene). */
+  darkScene?: true;
 };
 
 /*
@@ -26,6 +28,12 @@ const BRIGHT = { bigClip: 0.25, bigMean: 200, smallClip: 0.06, smallMean: 175 };
 const SHARP = { big: 0.55, small: 0.8, smeared: 1.25, smearedBig: 0.9 };
 const SMEAR = { shake: 0.3, slow: 0.25, big: 0.45, alone: 0.45 };
 const GRAIN = { big: 4.5, small: 2.5, minIso: 800 };
+/**
+ * Dark scenes (see isDarkScene). `lit` and `vivid` are shares of the photo's non-black part at full
+ * brightness. Tuned on real Canon Rebel XT photos: moon shots, neon signs and flash portraits on a
+ * black background score 0.5% to 27%, dim flash group shots that really were too dark under 0.2%.
+ */
+const SCENE = { crushed: 0.2, lit: 0.003, vivid: 0.02, blown: 0.0005, blownBig: 0.002 };
 /** Phone exposures this long are almost always Night mode. */
 const NIGHT_MODE = 1 / 4;
 
@@ -43,7 +51,18 @@ export function findIssues(stats: ImageStats, meta?: PhotoMeta): Issue[] {
   );
 }
 
+/**
+ * True for photos meant to be mostly dark: the moon or a neon sign on a black sky, a sunset, a
+ * flash portrait at night. Their bright parts reach full brightness, so the camera exposed for
+ * those and the rest is dark because the scene is. Brightening would only blow out the subject.
+ */
+export function isDarkScene(s: ImageStats): boolean {
+  const lit = (s.highlights ?? 0) / Math.max(1 - s.crushed, 0.01);
+  return (s.crushed >= SCENE.crushed && lit >= SCENE.lit) || lit >= SCENE.vivid;
+}
+
 function dark(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
+  if (isDarkScene(s)) return undefined;
   const grey = s.p99 < DARK.greyTop && s.meanLuma < DARK.greyMean;
   const big = s.meanLuma < DARK.bigMean || s.p99 < DARK.bigTop;
   const small = (s.meanLuma < DARK.smallMean && s.p95 < DARK.smallP95) || grey;
@@ -68,7 +87,7 @@ function dark(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
 function bright(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   const big = s.clipped > BRIGHT.bigClip || s.meanLuma > BRIGHT.bigMean;
   const small = s.clipped > BRIGHT.smallClip || s.meanLuma > BRIGHT.smallMean;
-  if (!big && !small) return undefined;
+  if (!big && !small) return blownSpot(s);
 
   const why: string[] = [];
   if (s.clipped > BRIGHT.smallClip) {
@@ -85,6 +104,22 @@ function bright(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
     why: why.join(" "),
     area: tilesWhere(s, (t) => t.clipped > 0.3),
   };
+}
+
+function blownSpot(s: ImageStats): Issue | undefined {
+  // A white moon or lamp on a dark photo is too small for the check above, but it is the subject.
+  // The dark surroundings fool the camera into a long exposure that burns it out.
+  if (s.crushed >= SCENE.crushed && isDarkScene(s) && s.clipped >= SCENE.blown && s.clipped >= 0.5 * (s.highlights ?? 0)) {
+    return {
+      kind: "bright",
+      severity: s.clipped >= SCENE.blownBig ? "big" : "small",
+      title: "Bright spot blown out",
+      why: "The brightest part is pure white, so its detail is gone. The dark around it fooled the camera into going too bright.",
+      area: tilesWhere(s, (t) => t.clipped > 0.01),
+      darkScene: true,
+    };
+  }
+  return undefined;
 }
 
 function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
@@ -152,6 +187,11 @@ function grain(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
 export function handHeldLimit(meta?: PhotoMeta): number {
   const focal = meta?.focalLength35 ?? (meta?.device?.kind === "camera" ? meta.focalLength : undefined);
   return (isStabilized(meta?.device) ? 4 : 1) / Math.max(focal ?? 30, 15);
+}
+
+/** The shutter speed a shake fix aims for: hand-holdable, and quick enough for people walking. */
+export function steadyShutter(meta?: PhotoMeta): number {
+  return Math.min(handHeldLimit(meta), 1 / 125);
 }
 
 /** undefined when the shutter speed is unknown. */

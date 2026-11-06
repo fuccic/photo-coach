@@ -61,8 +61,8 @@ A few rules of thumb to try:
 | Step | What you see | Status |
 |---|---|---|
 | Read settings | Shutter, aperture, ISO, lens and mode from each photo | ✅ Works now |
-| Spot problems | "Too dark", "Too bright", "A bit blurry", "Out of focus", "Grainy" | ✅ Works now |
-| Suggest a fix | `ISO 100 → ISO 800`, with a "Why?" in one sentence | ✅ Works now |
+| Spot problems | "Too dark", "Too bright", "A bit blurry", "Out of focus", "Grainy". Night shots of the moon, neon signs and sunsets aren't called too dark; a blown-out moon gets "Bright spot blown out" | ✅ Works now |
+| Suggest a fix | `ISO 100 → ISO 800`, with a "Why?" in one sentence. Fixes keep the brightness balanced, and flash photos get flash settings | ✅ Works now |
 | Show the buttons | Step-by-step on *your* camera: "Press ISO on the wheel, turn to 800" | ✅ Works now |
 | Track progress | Your most common mistakes over time | Later |
 

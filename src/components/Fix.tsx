@@ -16,7 +16,7 @@ export function useFix(
   return useMemo(() => {
     if (!issue) return undefined;
     const guide = guideFor(meta?.device);
-    return { fix: solveFix(issue, meta, stats, guide, issues?.map((i) => i.kind)), guide };
+    return { fix: solveFix(issue, meta, stats, guide, issues ?? []), guide };
   }, [issue, issues, meta, stats]);
 }
 

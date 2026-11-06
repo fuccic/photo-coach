@@ -5,8 +5,9 @@ import type { Model } from "./types";
  * instruction manual: ISO and AF mode are on the cross keys, picked with ◀ ▶ and confirmed with
  * SET (p. 55, 70); exposure compensation is the Av± button held while turning the main dial, ±2
  * in third stops, in P, Tv and Av (p. 89); in M the main dial sets the shutter and Av± plus the
- * main dial the aperture (p. 86). No in-body stabilisation and no live view. Which cross key is
- * which, and the focus beep, are marked `assumed` until checked on the camera.
+ * main dial the aperture (p. 86); flash sync is 1/200s. No in-body stabilisation and no live view. Which cross key is
+ * which, the focus beep and where flash exposure compensation sits in the menu are marked
+ * `assumed` until checked on the camera.
  */
 export const canonRebelXt: Model = {
   name: "Canon Rebel XT",
@@ -19,7 +20,7 @@ export const canonRebelXt: Model = {
     assumedNote: "Not yet checked on a real Rebel XT.",
     modeNames: { program: "P", aperture: "Av", shutter: "Tv", manual: "M" },
     // ISO 1600 is the top of the range on this sensor.
-    limits: { isoMin: 100, isoMax: 1600, shutterMin: 1 / 4000, evMax: 2 },
+    limits: { isoMin: 100, isoMax: 1600, shutterMin: 1 / 4000, evMax: 2, flashSync: 1 / 200 },
     diagram: {
       body: "camera-back",
       controls: {
@@ -49,6 +50,13 @@ export const canonRebelXt: Model = {
         { text: "Hold Av±, turn the main dial to {value}", control: "avButton", modes: ["manual"] },
       ],
       ev: [{ text: "Hold Av±, turn the main dial to {value}", control: "avButton" }],
+      // Flash exposure compensation is a menu item on this model, ±2 in third stops.
+      flashComp: [
+        { text: "Press MENU", control: "menu" },
+        { text: "Pick Flash exp comp, press SET", control: "set", assumed: true },
+        { text: "Press ◀ or ▶ to {value}", control: "cross" },
+        { text: "Press SET", control: "set" },
+      ],
       focusMode: [
         { text: "Lens switch to AF" },
         { text: "Press AF on the cross keys", control: "crossRight", assumed: true },
@@ -59,6 +67,7 @@ export const canonRebelXt: Model = {
         { text: "Press SET until only the center lights", control: "set" },
       ],
       halfPress: [{ text: "Half-press until it beeps", control: "shutter", assumed: true }],
+      steady: [{ text: "Use a tripod, or brace on a wall" }],
     },
   },
 };

@@ -33,6 +33,7 @@ function formatValue(action: Action, guide: Guide): string {
     case "aperture":
       return formatAperture(v) ?? "";
     case "ev":
+    case "flashComp":
       return formatEv(v);
     default:
       return String(v);
@@ -56,5 +57,8 @@ export function formatChange(c: Change): { from?: string; to: string } {
       return { from: formatAperture(c.from), to: formatAperture(c.to) ?? "" };
     case "ev":
       return { from: formatExposureComp(c.from ?? 0), to: formatExposureComp(c.to) ?? "" };
+    case "flash":
+      // Photos don't record flash compensation, so there's no "from".
+      return { to: `Flash ${formatEv(c.to)}` };
   }
 }

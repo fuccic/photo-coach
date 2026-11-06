@@ -4,7 +4,7 @@ import type { Model } from "./types";
  * Sony α7 II (ILCE-7M2) with factory button settings. Checked against Sony's Help Guide
  * (helpguide.sony.net/ilc/1450): in M the front dial sets aperture and the rear dial the shutter
  * ([Dial Setup] default), exposure compensation has its own dial, and Focus Mode / Focus Area are
- * in the Fn menu. C1 to C4 are user-assignable, so steps never use them.
+ * in the Fn menu. Flash Comp. in the Fn menu is not yet checked. C1 to C4 are user-assignable, so steps never use them.
  */
 export const sonyA7ii: Model = {
   name: "Sony α7 II",
@@ -15,7 +15,7 @@ export const sonyA7ii: Model = {
     kind: "camera",
     source: "Sony α7 II Help Guide, factory button settings",
     modeNames: { program: "P", aperture: "A", shutter: "S", manual: "M" },
-    limits: { isoMin: 100, isoMax: 6400, shutterMin: 1 / 8000, evMax: 3 },
+    limits: { isoMin: 100, isoMax: 6400, shutterMin: 1 / 8000, evMax: 3, flashSync: 1 / 250 },
     diagram: {
       body: "camera-back",
       controls: {
@@ -41,12 +41,18 @@ export const sonyA7ii: Model = {
       shutter: [{ text: "Turn the rear dial to {value}", control: "rearDial" }],
       aperture: [{ text: "Turn the front dial to {value}", control: "frontDial" }],
       ev: [{ text: "Exposure dial to {value}", control: "evDial" }],
+      // The α7 II has no built-in flash: this is for one on the hot shoe.
+      flashComp: [
+        { text: "Press Fn", control: "fn" },
+        { text: "Flash Comp.: {value}", control: "wheel", assumed: true },
+      ],
       focusMode: [
         { text: "Press Fn", control: "fn" },
         { text: "Focus Mode: AF-S", control: "wheel" },
       ],
       focusArea: [{ text: "Focus Area: Flexible Spot", control: "wheel" }],
       halfPress: [{ text: "Half-press until the box goes green", control: "shutter" }],
+      steady: [{ text: "Use a tripod, or brace on a wall" }],
     },
   },
 };
