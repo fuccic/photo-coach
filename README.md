@@ -70,7 +70,7 @@ A few rules of thumb to try:
 
 - **Sony α7 II** (ILCE-7M2): JPEG and RAW (ARW)
 - **iPhone 18 Pro**: the Camera app's HEIC and JPEG photos. iPhone doesn't let you set shutter or ISO directly, so its tips use what you *can* change: tap to focus, the brightness slider, lens choice and Night mode.
-- **Canon Rebel XT** (EOS 350D, Kiss Digital N): JPEG. Steps come from Canon's manual; a few key positions are marked * until checked on a real camera. Its RAW files (CR2) aren't supported yet.
+- **Canon Rebel XT** (EOS 350D, Kiss Digital N): JPEG, RAW (CR2) and DNG (e.g. from Lightroom or Adobe DNG Converter). Steps come from Canon's manual; a few key positions are marked * until checked on a real camera.
 
 Photos from other cameras still show their settings; step-by-step button instructions come camera by camera. To add one, copy a file in `src/lib/instructions/` and add it to `MODELS` in `src/lib/instructions/index.ts`. See [PLAN.md](PLAN.md) for the roadmap.
 
@@ -89,7 +89,7 @@ Built with Next.js, TypeScript and Tailwind. Photos are saved in the browser (In
 
 - `src/lib/exif.ts`: reads EXIF with [exifr](https://github.com/MikeKovarik/exifr) into a `PhotoMeta`.
 - `src/lib/heifExif.ts`: fallback EXIF locator for HEIC files exifr can't read (files written by libheif-based tools).
-- `src/lib/rawPreview.ts`: pulls the embedded JPEG preview out of Sony ARW files.
+- `src/lib/rawPreview.ts`: pulls the largest JPEG preview a browser can decode out of RAW files (Sony ARW, Canon CR2, DNG) and carries over the camera's rotation. The RAW sensor data itself is never decoded, so checks run on that preview: 1536×1024 in a Rebel XT CR2, usually 1024px on the long side in a DNG (and a DNG's preview shows any edits made before it was saved). A RAW file with no usable preview gets a message asking for a JPEG instead.
 - `src/lib/devices.ts`: maps EXIF Make/Model to supported devices.
 - `src/lib/preview.ts`: makes a viewable preview (HEIC is converted in the browser, except on Safari which shows it natively).
 - `src/app/`: the screens.
