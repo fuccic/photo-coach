@@ -212,3 +212,60 @@ describe("photo checks", () => {
     expect(kinds(findIssues(measure(toRgba(gaussianBlur(base, 3)), W, H)))).toEqual(["focus:big"]);
   });
 });
+
+/** A flat linear-light colour, with rectangles and discs painted on. */
+function canvas(rgb: number[]): Scene {
+  const img = new Float32Array(W * H * 3);
+  for (let p = 0; p < W * H; p++) img.set(rgb, p * 3);
+  return img;
+}
+
+function paint(img: Scene, rgb: number[], inside: (x: number, y: number) => boolean): Scene {
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (inside(x, y)) img.set(rgb, (y * W + x) * 3);
+  return img;
+}
+
+const disc = (cx: number, cy: number, r: number) => (x: number, y: number) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+const box = (x0: number, y0: number, x1: number, y1: number) => (x: number, y: number) => x >= x0 && x < x1 && y >= y0 && y < y1;
+
+describe("dark scenes", () => {
+  const night = [0.0004, 0.0004, 0.0006];
+  const handHeld = { ...camera, exposureTime: 1 / 15, focalLength: 135 };
+
+  it("doesn't call the moon on a night sky too dark, and flags the moon itself as blown out", () => {
+    // A white moon covering about 0.4% of the frame, like the 135mm moon shots on a Rebel XT.
+    const moon = paint(canvas(night), [1, 1, 1], disc(400, 150, 20));
+    const issues = check(toRgba(moon), handHeld);
+    expect(issues.some((i) => i.kind === "dark")).toBe(false);
+    const [blown] = issues;
+    expect(blown).toMatchObject({ kind: "bright", severity: "big", title: "Bright spot blown out", darkScene: true });
+    expect(blown.area.length).toBeGreaterThan(0);
+    // Without the moon it's just a black photo.
+    expect(kinds(check(toRgba(canvas(night)), handHeld))).toEqual(["dark:big"]);
+  });
+
+  it("leaves a neon sign at night alone: its colour is bright, not blown out", () => {
+    const sign = paint(canvas(night), [1, 0.03, 0.03], (x, y) => box(200, 100, 440, 130)(x, y) || box(300, 130, 320, 300)(x, y));
+    paint(sign, [0.004, 0.004, 0.005], box(0, 300, W, H));
+    expect(check(toRgba(sign))).toEqual([]);
+  });
+
+  it("leaves a flash portrait on a black background alone, but not a dim one", () => {
+    // Face and shirt lit by the flash, a little shine on the forehead, night behind.
+    const lit = paint(canvas(night), [0.3, 0.2, 0.15], box(220, 120, 420, H));
+    paint(lit, [0.97, 0.95, 0.9], box(300, 150, 330, 170));
+    expect(check(toRgba(lit))).toEqual([]);
+    // The same shot with too little flash: the subject is murky and nothing reaches full brightness.
+    const dim = paint(canvas(night), [0.03, 0.02, 0.015], box(220, 120, 420, H));
+    paint(dim, [0.09, 0.09, 0.08], box(300, 150, 330, 170));
+    expect(check(toRgba(dim)).map((i) => i.kind)).toContain("dark");
+  });
+
+  it("leaves a sunset alone, where bright colour fills the sky over a dark sea", () => {
+    const sunset = paint(canvas([0.12, 0.035, 0.01]), [0.02, 0.012, 0.012], box(0, H / 2, W, H));
+    const clouds = paint(sunset.slice(), [1, 0.45, 0.08], box(0, 150, W, 175));
+    expect(check(toRgba(clouds)).some((i) => i.kind === "dark")).toBe(false);
+    // Without the glowing clouds the same frame is just underexposed.
+    expect(check(toRgba(sunset)).some((i) => i.kind === "dark")).toBe(true);
+  });
+});

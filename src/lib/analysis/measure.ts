@@ -38,6 +38,11 @@ export type ImageStats = {
   /** Share of the photo at pure white / near black. */
   clipped: number;
   crushed: number;
+  /**
+   * Share of the photo at full brightness in at least one channel: light sources, a lit subject,
+   * a vivid sky. A dark photo with these was exposed for its bright parts, not underexposed.
+   */
+  highlights: number;
   /** Grain, as a standard deviation on the 0–255 scale. */
   noise: number;
   /** False when the photo has no flat areas to read grain from, so `noise` is a rough guess. */
@@ -54,10 +59,11 @@ export type ImageStats = {
 };
 
 /** Bump when measure() changes, so saved photos are measured again with the new version. */
-export const MEASURE_VERSION = 2;
+export const MEASURE_VERSION = 3;
 
 const CLIP_LEVEL = 252;
 const CRUSH_LEVEL = 12;
+const HIGHLIGHT_LEVEL = 250;
 /** Gradient energy (per pixel, above grain) a tile needs before its sharpness counts. */
 const DETAIL_ENERGY = 6;
 
@@ -88,6 +94,7 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
   let total = 0;
   let clippedPx = 0;
   let crushedPx = 0;
+  let highlightPx = 0;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
@@ -106,6 +113,7 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
         clip[t]++;
         clippedPx++;
       }
+      if (Math.max(r, g, b) >= HIGHLIGHT_LEVEL) highlightPx++;
       if (l < CRUSH_LEVEL) {
         crush[t]++;
         crushedPx++;
@@ -222,6 +230,7 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
     p99: histPercentile(hist, n, 0.99),
     clipped: clippedPx / n,
     crushed: crushedPx / n,
+    highlights: highlightPx / n,
     noise,
     noiseSure,
     // Judge the sharpest parts: a photo with a sharp subject and a soft background is fine.

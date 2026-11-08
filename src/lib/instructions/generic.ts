@@ -7,16 +7,18 @@ export const genericCamera: CameraGuide = {
   generic: true,
   source: "General steps. Your camera may name these differently.",
   modeNames: { program: "P", aperture: "A or Av", shutter: "S or Tv", manual: "M" },
-  limits: { isoMin: 100, isoMax: 3200, shutterMin: 1 / 4000, evMax: 3 },
+  limits: { isoMin: 100, isoMax: 3200, shutterMin: 1 / 4000, evMax: 3, flashSync: 1 / 200 },
   levers: {
     mode: [{ text: "Mode dial to {value}" }],
     iso: [{ text: "Find ISO (a button or quick menu)" }, { text: "Set it to {value}" }],
     shutter: [{ text: "Turn the main dial to {value}" }],
     aperture: [{ text: "Turn the main dial to {value}" }],
     ev: [{ text: "Find the ± button or dial" }, { text: "Set it to {value}" }],
+    flashComp: [{ text: "Find flash compensation (⚡±)" }, { text: "Set it to {value}" }],
     focusMode: [{ text: "Focus mode: single (AF-S, One Shot)" }],
     focusArea: [{ text: "Focus area: one small point" }],
     halfPress: [{ text: "Half-press on the subject, wait for the beep" }],
+    steady: [{ text: "Use a tripod, or brace on a wall" }],
   },
 };
 

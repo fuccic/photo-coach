@@ -11,7 +11,17 @@ import type { ShootingMode } from "../exif";
  */
 
 /** Things you can set directly on a camera. */
-export type CameraLever = "mode" | "iso" | "shutter" | "aperture" | "ev" | "focusMode" | "focusArea" | "halfPress";
+export type CameraLever =
+  | "mode"
+  | "iso"
+  | "shutter"
+  | "aperture"
+  | "ev"
+  | "flashComp"
+  | "focusMode"
+  | "focusArea"
+  | "halfPress"
+  | "steady";
 
 /** Things you can do in a phone's own camera app. */
 export type PhoneLever =
@@ -82,6 +92,8 @@ export type CameraGuide = GuideBase & {
     shutterMin: number;
     /** Exposure compensation reach (± EV) of the control the steps use. */
     evMax: number;
+    /** Fastest shutter that works with flash (the flash sync speed), in seconds. */
+    flashSync: number;
   };
   levers: Record<CameraLever, Step[]>;
 };
