@@ -42,6 +42,7 @@ type RawExif = Partial<{
   ExifImageHeight: number;
   ImageWidth: number;
   ImageHeight: number;
+  SubfileType: number;
 }>;
 
 // EXIF ExposureProgram values (EXIF 2.32, tag 0x8822).
@@ -63,8 +64,18 @@ const PARSE_OPTIONS = {
   mergeOutput: true,
 };
 
+/** EXIF sits at the start of JPEG and TIFF-based RAW files, so big files are read from their start first. */
+const HEAD_BYTES = 1024 * 1024;
+
 export async function readPhotoMeta(input: Blob | ArrayBuffer | Uint8Array): Promise<PhotoMeta> {
-  const bytes = await toBytes(input);
+  if (input instanceof Blob && input.size > HEAD_BYTES) {
+    const head = await readBytes(new Uint8Array(await input.slice(0, HEAD_BYTES).arrayBuffer()));
+    if (head.hasSettings) return head;
+  }
+  return readBytes(await toBytes(input));
+}
+
+async function readBytes(bytes: Uint8Array): Promise<PhotoMeta> {
   let raw = await tryParse(bytes);
   if (!raw?.Make && !raw?.ExposureTime) {
     const heifTiff = findHeifExif(bytes);
@@ -97,6 +108,7 @@ export function toPhotoMeta(raw: RawExif): PhotoMeta {
   const iso = num(Array.isArray(raw.ISO) ? raw.ISO[0] : raw.ISO);
   const flash = num(raw.Flash);
   const program = num(raw.ExposureProgram);
+  const thumbnailIfd0 = num(raw.SubfileType) === 1;
 
   return {
     make: str(raw.Make),
@@ -112,8 +124,9 @@ export function toPhotoMeta(raw: RawExif): PhotoMeta {
     mode: program === undefined ? undefined : (MODES[program] ?? (program === 0 ? undefined : "other")),
     flashFired: flash === undefined ? undefined : (flash & 1) === 1,
     takenAt: raw.DateTimeOriginal instanceof Date && !Number.isNaN(raw.DateTimeOriginal.getTime()) ? raw.DateTimeOriginal : undefined,
-    width: num(raw.ExifImageWidth) ?? num(raw.ImageWidth),
-    height: num(raw.ExifImageHeight) ?? num(raw.ImageHeight),
+    // In a DNG, IFD0 is a small thumbnail (subfile type 1), so its size isn't the photo's.
+    width: num(raw.ExifImageWidth) ?? (thumbnailIfd0 ? undefined : num(raw.ImageWidth)),
+    height: num(raw.ExifImageHeight) ?? (thumbnailIfd0 ? undefined : num(raw.ImageHeight)),
     hasSettings: exposureTime !== undefined && fNumber !== undefined && iso !== undefined,
   };
 }
