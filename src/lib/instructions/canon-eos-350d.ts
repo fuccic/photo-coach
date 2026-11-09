@@ -13,6 +13,8 @@ export const canonRebelXt: Model = {
   name: "Canon Rebel XT",
   match: (make, model) =>
     make.startsWith("CANON") && ["CANON EOS DIGITAL REBEL XT", "CANON EOS 350D DIGITAL", "CANON EOS 350D", "CANON EOS KISS DIGITAL N"].includes(model),
+  // APS-C sensor (22.2 × 14.8mm), so a 50mm lens frames like 80mm on full frame. Its EXIF has no 35mm-equivalent tag.
+  cropFactor: 1.6,
   guide: {
     id: "canon-eos-350d",
     kind: "camera",

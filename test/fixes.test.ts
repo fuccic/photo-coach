@@ -342,7 +342,8 @@ describe("solveFix for dark scenes", () => {
     const bright = solveFix(moon, m, stats(2), guide, found);
     const shake = solveFix(found[1], m, stats(2), guide, found);
     expect(bright.changes).toEqual(shake.changes);
-    expect(bright.changes.find((c) => c.setting === "shutter")?.to).toBeCloseTo(1 / 160);
+    // 135mm on the Rebel XT frames like 216mm on full frame, so 1/250s, not 1/160s.
+    expect(bright.changes.find((c) => c.setting === "shutter")?.to).toBeCloseTo(1 / 250);
     expect(bright.changes.some((c) => c.setting === "iso")).toBe(false);
     expect(bright.changes).toContainEqual({ setting: "ev", from: undefined, to: -2 });
   });

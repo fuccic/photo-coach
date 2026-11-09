@@ -112,6 +112,11 @@ export type Model = {
   match: (make: string, model: string) => boolean;
   /** In-body stabilisation, which lets a camera be hand-held at slower shutter speeds. */
   stabilized?: true;
+  /**
+   * How much the sensor crops a full-frame view: 1 for full frame, about 1.6 for Canon APS-C.
+   * Multiplies the lens's focal length into its 35mm equivalent when EXIF doesn't record one.
+   */
+  cropFactor?: number;
   guide: Guide;
 };
 
