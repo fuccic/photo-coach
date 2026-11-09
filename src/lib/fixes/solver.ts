@@ -301,7 +301,10 @@ function cameraFix(
     } else {
       // In S the camera opens the lens by itself. ISO covers what the lens can't.
       // Rounded up when brightening, so the photo doesn't end up darker than wanted.
-      const extra = need - openRoom;
+      // A blown-out moon or lamp is a rough guess of how far over it went, so a faster shutter
+      // that darkens it a bit more than planned is fine: raising ISO in a "too bright" fix would
+      // only confuse.
+      const extra = want < 0 && other("bright").darkScene ? 0 : need - openRoom;
       if (extra > 0.33) isoTo = snapIso(iso * 2 ** Math.min(want >= 0 ? Math.ceil(extra - 0.25) : extra, raise), limits);
       if (Math.abs(want) >= 0.33) {
         const ev = meta?.exposureComp ?? 0;

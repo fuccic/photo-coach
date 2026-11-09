@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { identifyDevice, isStabilized } from "@/lib/devices";
+import { equivalentFocal, identifyDevice, isStabilized } from "@/lib/devices";
+import { handHeldLimit } from "@/lib/analysis/checks";
 
 describe("identifyDevice", () => {
   it("knows the MVP devices", () => {
@@ -29,5 +30,33 @@ describe("identifyDevice", () => {
 
   it("returns null without Make or Model", () => {
     expect(identifyDevice(undefined, "  ")).toBeNull();
+  });
+});
+
+describe("equivalentFocal", () => {
+  const rebel = identifyDevice("Canon", "Canon EOS DIGITAL REBEL XT");
+  const sony = identifyDevice("SONY", "ILCE-7M2");
+  const iphone = identifyDevice("Apple", "iPhone 18 Pro");
+
+  it("multiplies by the camera's crop factor", () => {
+    expect(equivalentFocal({ device: rebel, focalLength: 50 })).toBeCloseTo(80);
+    expect(equivalentFocal({ device: sony, focalLength: 50 })).toBe(50);
+  });
+
+  it("trusts the 35mm figure in EXIF when there is one", () => {
+    expect(equivalentFocal({ device: rebel, focalLength: 50, focalLength35: 81 })).toBe(81);
+    expect(equivalentFocal({ device: iphone, focalLength: 6.9, focalLength35: 24 })).toBe(24);
+  });
+
+  it("takes unknown cameras as full frame, and knows nothing for phones without a 35mm figure", () => {
+    expect(equivalentFocal({ device: identifyDevice("Canon", "Canon EOS R50"), focalLength: 50 })).toBe(50);
+    expect(equivalentFocal({ device: iphone, focalLength: 6.9 })).toBeUndefined();
+    expect(equivalentFocal(undefined)).toBeUndefined();
+  });
+
+  it("asks for a faster shutter on the Rebel XT than on a full-frame camera with the same lens", () => {
+    const base = { hasSettings: true, focalLength: 50 } as const;
+    expect(handHeldLimit({ ...base, device: rebel })).toBeCloseTo(1 / 80);
+    expect(handHeldLimit({ ...base, device: identifyDevice("Canon", "Canon EOS 5D") })).toBeCloseTo(1 / 50);
   });
 });

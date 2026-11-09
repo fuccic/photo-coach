@@ -10,6 +10,8 @@ export const sonyA7ii: Model = {
   name: "Sony α7 II",
   match: (make, model) => make.startsWith("SONY") && model === "ILCE-7M2",
   stabilized: true,
+  // Full-frame sensor.
+  cropFactor: 1,
   guide: {
     id: "sony-ilce-7m2",
     kind: "camera",

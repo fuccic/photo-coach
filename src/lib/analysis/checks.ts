@@ -1,4 +1,4 @@
-import { isStabilized } from "../devices";
+import { equivalentFocal, isStabilized } from "../devices";
 import type { PhotoMeta } from "../exif";
 import { formatAperture, formatExposureComp, formatIso, formatShutter } from "../format";
 import type { ImageStats } from "./measure";
@@ -185,7 +185,7 @@ function grain(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
  * two stops in practice (makers claim more, but that needs good technique).
  */
 export function handHeldLimit(meta?: PhotoMeta): number {
-  const focal = meta?.focalLength35 ?? (meta?.device?.kind === "camera" ? meta.focalLength : undefined);
+  const focal = equivalentFocal(meta);
   return (isStabilized(meta?.device) ? 4 : 1) / Math.max(focal ?? 30, 15);
 }
 
