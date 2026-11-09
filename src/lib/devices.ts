@@ -1,3 +1,4 @@
+import type { PhotoMeta } from "./exif";
 import { MODELS, type Model } from "./instructions";
 
 export type DeviceKind = "camera" | "phone";
@@ -10,20 +11,34 @@ export type Device = {
   supported: boolean;
 };
 
-type KnownDevice = Omit<Device, "supported"> & Pick<Model, "match" | "stabilized">;
+type KnownDevice = Omit<Device, "supported"> & Pick<Model, "match" | "stabilized" | "cropFactor">;
 
 // One per model file in lib/instructions, so a supported device always has a guide.
-export const KNOWN_DEVICES: KnownDevice[] = MODELS.map(({ name, match, stabilized, guide }) => ({
+export const KNOWN_DEVICES: KnownDevice[] = MODELS.map(({ name, match, stabilized, cropFactor, guide }) => ({
   id: guide.id,
   name,
   kind: guide.kind,
   match,
   stabilized,
+  cropFactor,
 }));
 
 /** True for supported cameras with in-body stabilisation. Looked up by id, so photos saved earlier get it too. */
 export function isStabilized(device: Device | null | undefined): boolean {
   return !!device && KNOWN_DEVICES.some((d) => d.id === device.id && d.stabilized);
+}
+
+/**
+ * The 35mm-equivalent focal length, which is what hand-holding rules are written for. EXIF's own
+ * 35mm figure wins when the camera records one (iPhones do); otherwise a supported camera's crop
+ * factor multiplies the lens's focal length. Unknown cameras are taken as full frame.
+ * Looked up by id, so photos saved earlier get it too. undefined when nothing usable is known.
+ */
+export function equivalentFocal(meta: Pick<PhotoMeta, "device" | "focalLength" | "focalLength35"> | undefined): number | undefined {
+  if (meta?.focalLength35) return meta.focalLength35;
+  if (meta?.device?.kind !== "camera" || !meta.focalLength) return undefined;
+  const crop = KNOWN_DEVICES.find((d) => d.id === meta.device?.id)?.cropFactor ?? 1;
+  return meta.focalLength * crop;
 }
 
 const PHONE_MAKES = ["APPLE", "GOOGLE", "SAMSUNG", "ONEPLUS", "XIAOMI", "HUAWEI", "MOTOROLA"];
