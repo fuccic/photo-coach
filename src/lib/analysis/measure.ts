@@ -59,13 +59,17 @@ export type ImageStats = {
 };
 
 /** Bump when measure() changes, so saved photos are measured again with the new version. */
-export const MEASURE_VERSION = 3;
+export const MEASURE_VERSION = 4;
 
 const CLIP_LEVEL = 252;
 const CRUSH_LEVEL = 12;
 const HIGHLIGHT_LEVEL = 250;
 /** Gradient energy (per pixel, above grain) a tile needs before its sharpness counts. */
 const DETAIL_ENERGY = 6;
+/** Above this, a tile's detail runs one way only (a wall edge, a pole, a rail): no use for smear. */
+const ONE_WAY = 0.8;
+/** Two directions are compared only if edges face them about as squarely (see `facing`). */
+const FACING_MATCH = 0.5;
 
 export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, height: number): ImageStats {
   const n = width * height;
@@ -87,6 +91,10 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
   // Per direction (0°, 45°, 90°, 135°): first and second difference energy.
   const d1 = [0, 1, 2, 3].map(() => new Float64Array(tileCount));
   const d2 = [0, 1, 2, 3].map(() => new Float64Array(tileCount));
+  // Per direction: gradient energy weighted by cos² and cos⁴ of the angle between the slope and
+  // that direction, for how squarely edges face it (see `facing` below) and which way they run.
+  const cos2 = [0, 1, 2, 3].map(() => new Float64Array(tileCount));
+  const cos4 = [0, 1, 2, 3].map(() => new Float64Array(tileCount));
   const grain = new Float64Array(tileCount);
 
   const tileOf = (x: number, y: number) => Math.floor(y / tileSize) * cols + Math.floor(x / tileSize);
@@ -152,6 +160,21 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
       d2[1][t] += s45 * s45;
       d2[2][t] += s90 * s90;
       d2[3][t] += s135 * s135;
+      const gg = g0 * g0 + g90 * g90;
+      if (gg > 0) {
+        const a0 = g0 * g0;
+        const a45 = ((g0 - g90) * (g0 - g90)) / 2;
+        const a90 = g90 * g90;
+        const a135 = ((g0 + g90) * (g0 + g90)) / 2;
+        cos2[0][t] += a0;
+        cos2[1][t] += a45;
+        cos2[2][t] += a90;
+        cos2[3][t] += a135;
+        cos4[0][t] += (a0 * a0) / gg;
+        cos4[1][t] += (a45 * a45) / gg;
+        cos4[2][t] += (a90 * a90) / gg;
+        cos4[3][t] += (a135 * a135) / gg;
+      }
       // Immerkær (1996) fast noise estimate: this kernel cancels smooth gradients, leaving grain.
       grain[t] += Math.abs(ul - 2 * u + ur - 2 * l + 4 * c - 2 * r + dl - 2 * d + dr);
     }
@@ -199,9 +222,40 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
       // A tile is only as sharp as its blurriest direction: shake smears one way only.
       sharpness = Math.min(...valid);
       sharpList.push(sharpness);
-      if (valid.length >= 3) {
-        smearList.push(1 - sharpness / Math.max(...valid));
-        weakDir[ratios.indexOf(sharpness)]++;
+
+      // Smear compares how sharp the tile looks across different directions, and straight lines
+      // fool that in two ways. A crisp edge looks wider to a direction that crosses it at a slant,
+      // and the diagonal and straight-across readings don't agree on a crisp edge (the √2 above
+      // only holds for soft ones), so a wall, a pole or a railing reads as smeared when it isn't.
+      // So: skip tiles whose detail all runs one way (a single line can't show which way the
+      // camera moved anyway), and only compare a direction with the one at right angles to it
+      // (0° with 90°, 45° with 135°), and only when edges face both about as squarely.
+      const jxx = cos2[0][t];
+      const jyy = cos2[2][t];
+      const jxy = (cos2[3][t] - cos2[1][t]) / 2;
+      const oneWay = Math.sqrt((jxx - jyy) ** 2 + 4 * jxy * jxy) / (jxx + jyy || 1);
+      if (valid.length >= 3 && oneWay <= ONE_WAY) {
+        // cos² of the slant at which edges cross this direction, averaged the way the energies
+        // average it: 1 when edges face it squarely, ¾ for detail that runs every way.
+        const facing = [0, 1, 2, 3].map((k) => (cos2[k][t] > 0 ? cos4[k][t] / cos2[k][t] : 0.75));
+        let best = -1;
+        let weak = -1;
+        for (const [i, j] of [
+          [0, 2],
+          [1, 3],
+        ]) {
+          if (!Number.isFinite(ratios[i]) || !Number.isFinite(ratios[j])) continue;
+          if (Math.min(facing[i], facing[j]) < FACING_MATCH * Math.max(facing[i], facing[j])) continue;
+          const smear = 1 - Math.min(ratios[i], ratios[j]) / Math.max(ratios[i], ratios[j]);
+          if (smear > best) {
+            best = smear;
+            weak = ratios[i] < ratios[j] ? i : j;
+          }
+        }
+        if (best >= 0) {
+          smearList.push(best);
+          weakDir[weak]++;
+        }
       }
     }
     tiles.push({
