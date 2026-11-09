@@ -60,9 +60,82 @@ function gaussianBlur(img: Scene, sigma: number): Scene {
   return convolve(convolve(img, k.map((v) => v / sum), 1, 0), k.map((v) => v / sum), 0, 1);
 }
 
-/** Shake along a diagonal, `length` pixels long. */
-function motionBlur(img: Scene, length: number): Scene {
-  return convolve(img, Array(length).fill(1 / length), 1, 1);
+/** Shake `length` pixels long, along a diagonal unless told otherwise. */
+function motionBlur(img: Scene, length: number, dx = 1, dy = 1): Scene {
+  return convolve(img, Array(length).fill(1 / length), dx, dy);
+}
+
+/** Pebbles: rounded shapes at every angle, so edges run every way. */
+function pebbles(seed = 5): Scene {
+  const rand = rng(seed);
+  const img = new Float32Array(W * H * 3).fill(0.3);
+  for (let k = 0; k < 900; k++) {
+    const cx = rand() * W;
+    const cy = rand() * H;
+    const a = 3 + rand() * 18;
+    const b = 3 + rand() * 18;
+    const th = rand() * Math.PI;
+    const v = 0.03 + 0.6 * rand();
+    const r = Math.max(a, b);
+    for (let y = Math.max(0, Math.floor(cy - r)); y < Math.min(H, cy + r); y++) {
+      for (let x = Math.max(0, Math.floor(cx - r)); x < Math.min(W, cx + r); x++) {
+        const u = (x - cx) * Math.cos(th) + (y - cy) * Math.sin(th);
+        const w = -(x - cx) * Math.sin(th) + (y - cy) * Math.cos(th);
+        if ((u / a) ** 2 + (w / b) ** 2 <= 1) img.set([v, v * 0.9, v * 0.8], (y * W + x) * 3);
+      }
+    }
+  }
+  return img;
+}
+
+function fill(img: Scene, x0: number, y0: number, w: number, h: number, c: number[]) {
+  for (let y = Math.max(0, Math.round(y0)); y < Math.min(H, y0 + h); y++) {
+    for (let x = Math.max(0, Math.round(x0)); x < Math.min(W, x0 + w); x++) img.set(c, (y * W + x) * 3);
+  }
+}
+
+/** A street of buildings against the sky: nothing but long straight edges and window grids. */
+function street(): Scene {
+  const rand = rng(3);
+  const img = new Float32Array(W * H * 3);
+  fill(img, 0, 0, W, H, [0.4, 0.5, 0.7]);
+  for (let b = 0; b < 4; b++) {
+    const x0 = b * 160 + 5;
+    const top = 60 + rand() * 120;
+    fill(img, x0, top, 150, H, [0.2 + 0.3 * rand(), 0.2 + 0.2 * rand(), 0.15 + 0.2 * rand()]);
+    for (let wy = top + 15; wy < H - 20; wy += 36) {
+      for (let wx = x0 + 10; wx < x0 + 140; wx += 28) fill(img, wx, wy, 16, 22, [0.05, 0.06, 0.08]);
+    }
+  }
+  return img;
+}
+
+/** A reflecting pool behind a railing: long horizontal lines, a few posts, a tree line. */
+function railing(): Scene {
+  const img = new Float32Array(W * H * 3);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const water = [0.2, 0.3, 0.4 + 0.03 * Math.sin(y * 1.3)];
+      img.set(y < 200 ? [0.5, 0.6, 0.8] : y < 300 ? [0.3, 0.3, 0.28] : water, (y * W + x) * 3);
+    }
+  }
+  for (const y of [310, 318, 340]) fill(img, 0, y, W, 2, [0.9, 0.9, 0.85]);
+  for (let x = 5; x < W; x += 40) fill(img, x, 310, 3, 32, [0.9, 0.9, 0.85]);
+  fill(img, 300, 40, 30, 160, [0.85, 0.85, 0.8]);
+  for (let x = 0; x < W; x += 3) fill(img, x, 190 + 6 * Math.sin(x / 9), 3, 12, [0.08, 0.15, 0.06]);
+  return img;
+}
+
+/** Wide stripes at a slant, like a roofline or a staircase seen at an angle. */
+function slantedStripes(angle: number): Scene {
+  const img = new Float32Array(W * H * 3);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const v = Math.floor((x * Math.cos(angle) + y * Math.sin(angle)) / 40) % 2 ? 0.6 : 0.1;
+      img.set([v, v, v], (y * W + x) * 3);
+    }
+  }
+  return img;
 }
 
 function convolve(img: Scene, k: number[], dx: number, dy: number): Scene {
@@ -150,11 +223,31 @@ describe("photo checks", () => {
   });
 
   it("recognises camera shake by its one-way smear", () => {
-    expect(kinds(check(toRgba(motionBlur(base, 5))))).toEqual(["shake:small"]);
-    const issues = check(toRgba(motionBlur(base, 9)));
+    expect(kinds(check(toRgba(motionBlur(base, 5, 1, 0))))).toEqual(["shake:small"]);
+    const issues = check(toRgba(motionBlur(base, 5, 0, 1)));
     expect(kinds(issues)).toEqual(["shake:big"]);
     expect(issues[0].title).toBe("Blurry");
     expect(issues[0].why).toContain("runs one way");
+    // A diagonal shake shows on edges that run every way.
+    expect(kinds(check(toRgba(motionBlur(pebbles(), 3, 1, 0))))).toEqual(["shake:small"]);
+    expect(kinds(check(toRgba(motionBlur(pebbles(), 5))))).toEqual(["shake:big"]);
+  });
+
+  it("doesn't mistake long straight lines for shake", () => {
+    // Buildings, a railing over water, slanted stripes: sharp, or a touch soft as lenses are.
+    for (const img of [street(), railing(), slantedStripes(0.35)]) {
+      for (const soft of [0, 0.6]) {
+        const issues = check(toRgba(soft ? gaussianBlur(img, soft) : img, 2));
+        expect(issues.map((i) => i.kind)).not.toContain("shake");
+      }
+    }
+    expect(measure(toRgba(street()), W, H).smear).toBeLessThan(0.1);
+    expect(measure(toRgba(railing()), W, H).smear).toBeLessThan(0.1);
+  });
+
+  it("still sees shake on a street of straight lines", () => {
+    expect(kinds(check(toRgba(motionBlur(street(), 5, 1, 0))))).toEqual(["shake:big"]);
+    expect(kinds(check(toRgba(motionBlur(railing(), 5, 0, 1))))).toEqual(["shake:small"]);
   });
 
   it("blames a slow shutter for blur", () => {
