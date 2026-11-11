@@ -260,14 +260,27 @@ describe("photo checks", () => {
     expect(other.why).toContain("Aim for 1/35s or faster.");
   });
 
-  it("doesn't blame a phone's Night mode exposure for a soft photo, or tell it to set a shutter", () => {
+  it("blames movement, not focus, for a soft Night mode photo, and doesn't tell a phone to set a shutter", () => {
     const phone = { ...camera, device: identifyDevice("Apple", "iPhone 18 Pro"), exposureTime: 1, fNumber: 1.8 };
     const [issue] = check(toRgba(gaussianBlur(base, 3)), phone);
-    expect(issue.kind).toBe("focus");
+    expect(issue.kind).toBe("shake");
     expect(issue.why).not.toMatch(/Aim for|f\/1.8/);
     const [shake] = check(toRgba(motionBlur(base, 9)), phone);
     expect(shake.kind).toBe("shake");
-    expect(shake.why).toContain("Night mode took 1s");
+    // The saved shutter speed is one frame of many, so it isn't quoted.
+    expect(shake.why).toContain("Night mode keeps taking the photo for a second or more");
+    expect(shake.why).not.toContain("1s");
+  });
+
+  it("catches the even softness Night mode leaves when the phone or subject moved", () => {
+    // Night mode blends its frames, so movement leaves no one-way smear: just a photo a bit softer
+    // than a phone's usual crisp output (IMG_2703 and IMG_2733 in the iCloud test).
+    const iphone = { ...camera, device: identifyDevice("Apple", "iPhone 18 Pro"), fNumber: 1.8 };
+    const soft = toRgba(gaussianBlur(base, 0.5));
+    expect(kinds(check(soft, { ...iphone, exposureTime: 1 / 4 }))).toEqual(["shake:small"]);
+    // The same softness on a normal phone shot, or a sharp Night mode one, is fine.
+    expect(check(soft, { ...iphone, exposureTime: 1 / 60 })).toEqual([]);
+    expect(check(toRgba(base), { ...iphone, exposureTime: 1 / 2 })).toEqual([]);
   });
 
   it("doesn't call strong colours pure white", () => {
