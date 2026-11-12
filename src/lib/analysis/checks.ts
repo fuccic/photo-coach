@@ -22,7 +22,8 @@ export type Issue = {
  * Thresholds were tuned on sample photos with known amounts of under/over exposure, blur, shake
  * and added grain, measured at the analysis size (about 1600px on the long edge).
  */
-const DARK = { bigMean: 45, bigTop: 110, smallMean: 75, smallP95: 170, greyTop: 150, greyMean: 120 };
+/** `grey*`: nothing in the photo gets near white, like snow metered to grey. */
+const DARK = { bigMean: 45, bigTop: 110, smallMean: 75, smallP95: 180, greyTop: 170, greyMean: 140 };
 const BRIGHT = { bigClip: 0.25, bigMean: 200, smallClip: 0.06, smallMean: 175 };
 /** Sharpness is about 1 / blur width in pixels: sharp photos score 1 to 2+. */
 const SHARP = { big: 0.55, small: 0.8, smeared: 1.25, smearedBig: 0.9, night: 1.2 };
@@ -30,10 +31,12 @@ const SMEAR = { shake: 0.3, slow: 0.25, big: 0.45, alone: 0.45 };
 const GRAIN = { big: 4.5, small: 2.5, minIso: 800 };
 /**
  * Dark scenes (see isDarkScene). `lit` and `vivid` are shares of the photo's non-black part at full
- * brightness. Tuned on real Canon Rebel XT photos: moon shots, neon signs and flash portraits on a
- * black background score 0.5% to 27%, dim flash group shots that really were too dark under 0.2%.
+ * brightness. Moon shots and neon signs score 4% and up. Night streets with a few lamps or a lit
+ * monument score 0.5% to 2.5%, and a photographer marked those too dark (50-photo review, Nov 2026),
+ * so below `vivid` only a flash shot counts: a flash portrait on black scores 0.5% to 3%, while
+ * dim flash group shots that really were too dark stay under `lit`.
  */
-const SCENE = { crushed: 0.2, lit: 0.003, vivid: 0.02, blown: 0.0005, blownBig: 0.002 };
+const SCENE = { crushed: 0.2, lit: 0.003, vivid: 0.03, blown: 0.0005, blownBig: 0.002 };
 /** Phone exposures this long are almost always Night mode. */
 const NIGHT_MODE = 1 / 4;
 
@@ -56,13 +59,13 @@ export function findIssues(stats: ImageStats, meta?: PhotoMeta): Issue[] {
  * flash portrait at night. Their bright parts reach full brightness, so the camera exposed for
  * those and the rest is dark because the scene is. Brightening would only blow out the subject.
  */
-export function isDarkScene(s: ImageStats): boolean {
+export function isDarkScene(s: ImageStats, meta?: PhotoMeta): boolean {
   const lit = (s.highlights ?? 0) / Math.max(1 - s.crushed, 0.01);
-  return (s.crushed >= SCENE.crushed && lit >= SCENE.lit) || lit >= SCENE.vivid;
+  return lit >= SCENE.vivid || (meta?.flashFired === true && s.crushed >= SCENE.crushed && lit >= SCENE.lit);
 }
 
 function dark(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
-  if (isDarkScene(s)) return undefined;
+  if (isDarkScene(s, meta)) return undefined;
   const grey = s.p99 < DARK.greyTop && s.meanLuma < DARK.greyMean;
   const big = s.meanLuma < DARK.bigMean || s.p99 < DARK.bigTop;
   const small = (s.meanLuma < DARK.smallMean && s.p95 < DARK.smallP95) || grey;
@@ -87,7 +90,7 @@ function dark(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
 function bright(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   const big = s.clipped > BRIGHT.bigClip || s.meanLuma > BRIGHT.bigMean;
   const small = s.clipped > BRIGHT.smallClip || s.meanLuma > BRIGHT.smallMean;
-  if (!big && !small) return blownSpot(s);
+  if (!big && !small) return blownSpot(s, meta);
 
   const why: string[] = [];
   if (s.clipped > BRIGHT.smallClip) {
@@ -106,10 +109,10 @@ function bright(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   };
 }
 
-function blownSpot(s: ImageStats): Issue | undefined {
+function blownSpot(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   // A white moon or lamp on a dark photo is too small for the check above, but it is the subject.
   // The dark surroundings fool the camera into a long exposure that burns it out.
-  if (s.crushed >= SCENE.crushed && isDarkScene(s) && s.clipped >= SCENE.blown && s.clipped >= 0.5 * (s.highlights ?? 0)) {
+  if (s.crushed >= SCENE.crushed && isDarkScene(s, meta) && s.clipped >= SCENE.blown && s.clipped >= 0.5 * (s.highlights ?? 0)) {
     return {
       kind: "bright",
       severity: s.clipped >= SCENE.blownBig ? "big" : "small",

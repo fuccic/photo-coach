@@ -360,11 +360,27 @@ describe("dark scenes", () => {
     // Face and shirt lit by the flash, a little shine on the forehead, night behind.
     const lit = paint(canvas(night), [0.3, 0.2, 0.15], box(220, 120, 420, H));
     paint(lit, [0.97, 0.95, 0.9], box(300, 150, 330, 170));
-    expect(check(toRgba(lit))).toEqual([]);
+    const flash = { ...camera, flashFired: true };
+    expect(check(toRgba(lit), flash)).toEqual([]);
     // The same shot with too little flash: the subject is murky and nothing reaches full brightness.
     const dim = paint(canvas(night), [0.03, 0.02, 0.015], box(220, 120, 420, H));
     paint(dim, [0.09, 0.09, 0.08], box(300, 150, 330, 170));
-    expect(check(toRgba(dim)).map((i) => i.kind)).toContain("dark");
+    expect(check(toRgba(dim), flash).map((i) => i.kind)).toContain("dark");
+  });
+
+  it("calls a night street too dark even with a few lamps at full brightness", () => {
+    // Murky buildings and pavement, a handful of street lamps: marked too dark in a real review.
+    const street = paint(canvas(night), [0.02, 0.018, 0.015], box(0, 200, W, H));
+    paint(street, [0.03, 0.025, 0.02], box(100, 60, 260, 200));
+    for (const x of [140, 300, 460, 560]) paint(street, [1, 0.8, 0.5], disc(x, 185, 12));
+    const issues = check(toRgba(street));
+    expect(issues.find((i) => i.kind === "dark")).toMatchObject({ severity: "big", title: "Too dark" });
+  });
+
+  it("calls snow that came out grey a bit dark", () => {
+    // Overcast snowfield and trees metered to mid-grey: nothing gets near white.
+    const snow = paint(canvas([0.32, 0.33, 0.36]), [0.12, 0.12, 0.13], box(0, 0, W, 140));
+    expect(kinds(check(toRgba(snow))).filter((k) => k.startsWith("dark"))).toEqual(["dark:small"]);
   });
 
   it("leaves a sunset alone, where bright colour fills the sky over a dark sea", () => {

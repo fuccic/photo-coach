@@ -20,14 +20,48 @@ export async function makePreview(file: Blob, fileName: string): Promise<Blob | 
       return preview ? new Blob([preview.jpeg.slice()], { type: "image/jpeg" }) : null;
     }
     if (format === "heic" && !(await canDecode(file))) {
-      // Only Safari decodes HEIC natively; elsewhere convert in the browser. Loaded on demand (~1 MB).
-      const { default: heic2any } = await import("heic2any");
-      const out = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
-      return Array.isArray(out) ? out[0] : out;
+      // Only Safari decodes HEIC natively; elsewhere convert in the browser.
+      return (await heicToJpegOld(file)) ?? (await heicToJpeg(file));
     }
     return "original";
   } catch {
     return null;
+  }
+}
+
+/**
+ * heic2any (loaded on demand, ~1 MB) bundles an old libheif that can't read iPhone 18 Pro HEICs.
+ * It stays first for the HEICs it can read so their pixels, and so their check results, don't change.
+ */
+async function heicToJpegOld(file: Blob): Promise<Blob | null> {
+  try {
+    const { default: heic2any } = await import("heic2any");
+    const out = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.85 });
+    return Array.isArray(out) ? out[0] : out;
+  } catch {
+    return null;
+  }
+}
+
+/** Newer libheif (loaded on demand, ~2 MB) for the HEICs heic2any can't read. */
+async function heicToJpeg(file: Blob): Promise<Blob | null> {
+  const { default: libheif } = await import("libheif-js/wasm-bundle");
+  const images = new libheif.HeifDecoder().decode(new Uint8Array(await file.arrayBuffer()));
+  try {
+    const image = images.find((i) => i.is_primary()) ?? images[0];
+    if (!image) return null;
+    const width = image.get_width();
+    const height = image.get_height();
+    const pixels = new ImageData(width, height);
+    const shown = await new Promise<ImageData | null>((resolve) => image.display(pixels, resolve));
+    if (!shown) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d")?.putImageData(shown, 0, 0);
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  } finally {
+    for (const i of images) i.free();
   }
 }
 
