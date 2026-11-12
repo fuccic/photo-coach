@@ -26,7 +26,7 @@ export type Issue = {
 const DARK = { bigMean: 45, bigTop: 110, smallMean: 75, smallP95: 180, greyTop: 170, greyMean: 140 };
 const BRIGHT = { bigClip: 0.25, bigMean: 200, smallClip: 0.06, smallMean: 175 };
 /** Sharpness is about 1 / blur width in pixels: sharp photos score 1 to 2+. */
-const SHARP = { big: 0.55, small: 0.8, smeared: 1.25, smearedBig: 0.9 };
+const SHARP = { big: 0.55, small: 0.8, smeared: 1.25, smearedBig: 0.9, night: 1.2 };
 const SMEAR = { shake: 0.3, slow: 0.25, big: 0.45, alone: 0.45 };
 const GRAIN = { big: 4.5, small: 2.5, minIso: 800 };
 /**
@@ -127,18 +127,23 @@ function blownSpot(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
 
 function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   if (s.sharpness === null) return undefined;
-  // Phones pick their own shutter speed, and Night mode stacks long exposures, so a slow shutter
-  // alone doesn't mean shake there. It still makes shake likely enough to lower the bar for a smear.
+  // Phones pick their own shutter speed, so a slow one alone doesn't mean shake there.
   const phone = meta?.device?.kind === "phone";
   const slow = phone ? undefined : slowShutter(meta);
   const nightLong = phone && meta?.exposureTime !== undefined && meta.exposureTime >= NIGHT_MODE;
   const smeared = s.smear >= (slow || nightLong ? SMEAR.slow : SMEAR.shake);
+  // Night mode lines up and blends its frames, so movement during them softens the photo evenly
+  // instead of smearing it one way, and the phone's sharpening keeps a few light edges crisp. Sharp
+  // Night mode photos still score 1.3 or more; shaken ones about 1.0 (iPhone 18 Pro, 2026-11 test).
+  const nightSoft = nightLong && s.sharpness < SHARP.night;
   // Shake can leave edges that run along it crisp, so a strong one-way smear counts on its own.
-  const blurry = s.sharpness < SHARP.small || (smeared && s.sharpness < SHARP.smeared) || s.smear >= SMEAR.alone;
+  const blurry =
+    s.sharpness < SHARP.small || (smeared && s.sharpness < SHARP.smeared) || s.smear >= SMEAR.alone || nightSoft;
   if (!blurry) return undefined;
 
   const big = s.sharpness < SHARP.big || (s.smear >= SMEAR.big && s.sharpness < SHARP.smearedBig);
-  const shake = smeared || slow === true;
+  // In Night mode, movement during the long capture is a likelier cause than a focus miss.
+  const shake = smeared || slow === true || nightLong;
   const shutter = formatShutter(meta?.exposureTime);
   const why: string[] = [];
 
@@ -148,7 +153,9 @@ function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
     if (slow && shutter) {
       why.push(`${shutter} is slow to hold steady${focalText(meta)}. Aim for ${formatShutter(handHeldLimit(meta))} or faster.`);
     }
-    if (nightLong && shutter) why.push(`Night mode took ${shutter}, so the phone had to stay still that long.`);
+    // Not the saved shutter speed: that is one frame's, and Night mode stacks many of them
+    // (IMG_2703 saved 1/4s for a 3.5s capture).
+    if (nightLong) why.push("Night mode keeps taking the photo for a second or more, so the phone and the subject had to stay still that long.");
   } else {
     why.push(big ? "Nothing in the photo is sharp." : "Even the sharpest part is a little soft.");
     if (slow === false && shutter) why.push(`At ${shutter} it isn't shake, so focus missed.`);
@@ -157,7 +164,7 @@ function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
       why.push(`At ${formatAperture(meta.fNumber)} only a thin slice of the scene can be sharp.`);
     }
   }
-  const limit = smeared ? SHARP.smeared : SHARP.small;
+  const limit = nightSoft ? SHARP.night : smeared ? SHARP.smeared : SHARP.small;
   return {
     kind: shake ? "shake" : "focus",
     severity: big ? "big" : "small",
