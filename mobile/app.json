@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Photo Coach",
+    "slug": "photo-coach",
+    "scheme": "photocoach",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#fff8f1",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fuccic.photocoach"
+    },
+    "android": {
+      "package": "com.fuccic.photocoach",
+      "adaptiveIcon": {
+        "backgroundColor": "#fff8f1",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Photo Coach looks at the photos you pick to suggest better camera settings. Photos never leave your phone.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
