@@ -28,6 +28,11 @@ const BRIGHT = { bigClip: 0.25, bigMean: 200, smallClip: 0.06, smallMean: 175 };
 /** Sharpness is about 1 / blur width in pixels: sharp photos score 1 to 2+. */
 const SHARP = { big: 0.55, small: 0.8, smeared: 1.25, smearedBig: 0.9, night: 1.2 };
 const SMEAR = { shake: 0.3, slow: 0.25, big: 0.45, alone: 0.45 };
+/**
+ * Lights streaked the same way (see measureLights). Tuned on 52 iPhone photos (27 Night mode, Nov
+ * 2026): with 10 or more lights, shaken ones scored 0.45 to 0.77, sharp ones 0.31 or less.
+ */
+const STREAK = { lights: 10, shake: 0.4, big: 0.6 };
 const GRAIN = { big: 4.5, small: 2.5, minIso: 800 };
 /**
  * Dark scenes (see isDarkScene). `lit` and `vivid` are shares of the photo's non-black part at full
@@ -136,20 +141,31 @@ function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   // instead of smearing it one way, and the phone's sharpening keeps a few light edges crisp. Sharp
   // Night mode photos still score 1.3 or more; shaken ones about 1.0 (iPhone 18 Pro, 2026-11 test).
   const nightSoft = nightLong && s.sharpness < SHARP.night;
+  // Lights that all streak the same way: the camera moved, however crisp the edges look. Phones
+  // only for now: on a tripod, car light trails along a road would look the same.
+  const streaked = phone && (s.lights ?? 0) >= STREAK.lights && (s.lightStreak ?? 0) >= STREAK.shake;
   // Shake can leave edges that run along it crisp, so a strong one-way smear counts on its own.
   const blurry =
-    s.sharpness < SHARP.small || (smeared && s.sharpness < SHARP.smeared) || s.smear >= SMEAR.alone || nightSoft;
+    s.sharpness < SHARP.small ||
+    (smeared && s.sharpness < SHARP.smeared) ||
+    s.smear >= SMEAR.alone ||
+    nightSoft ||
+    streaked;
   if (!blurry) return undefined;
 
-  const big = s.sharpness < SHARP.big || (s.smear >= SMEAR.big && s.sharpness < SHARP.smearedBig);
+  const big =
+    s.sharpness < SHARP.big ||
+    (s.smear >= SMEAR.big && s.sharpness < SHARP.smearedBig) ||
+    (streaked && (s.lightStreak ?? 0) >= STREAK.big);
   // In Night mode, movement during the long capture is a likelier cause than a focus miss.
-  const shake = smeared || slow === true || nightLong;
+  const shake = smeared || slow === true || nightLong || streaked;
   const shutter = formatShutter(meta?.exposureTime);
   const why: string[] = [];
 
   if (shake) {
     why.push(big ? "The whole photo is smeared." : "Details are slightly smeared.");
     if (smeared) why.push("The smear runs one way, which means the camera or the subject moved.");
+    if (streaked && !smeared) why.push("The lights turned into streaks that all run the same way, which means the camera moved.");
     if (slow && shutter) {
       why.push(`${shutter} is slow to hold steady${focalText(meta)}. Aim for ${formatShutter(handHeldLimit(meta))} or faster.`);
     }

@@ -56,10 +56,16 @@ export type ImageStats = {
   smear: number;
   /** Tiles with enough detail to judge sharpness. */
   detailTiles: number;
+  /** Small bright lights found (see measureLights). Missing on photos measured before version 5. */
+  lights?: number;
+  /** 0 when the lights are dots or point every way, towards 1 when all streak the same way (shake). */
+  lightStreak?: number;
 };
 
 /** Bump when measure() changes, so saved photos are measured again with the new version. */
-export const MEASURE_VERSION = 4;
+export const MEASURE_VERSION = 5;
+
+import { measureLights } from "./lights";
 
 const CLIP_LEVEL = 252;
 const CRUSH_LEVEL = 12;
@@ -291,6 +297,7 @@ export function measure(rgba: Uint8ClampedArray | Uint8Array, width: number, hei
     sharpness: sharpList.length >= 3 ? percentile(sharpList, 0.9) : null,
     smear,
     detailTiles: sharpList.length,
+    ...measureLights(rgba, width, height),
   };
 }
 
