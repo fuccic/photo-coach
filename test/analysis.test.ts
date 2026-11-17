@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findIssues } from "@/lib/analysis/checks";
+import { faceDetail, type FaceStats } from "@/lib/analysis/faces";
 import { measure } from "@/lib/analysis/measure";
 import { identifyDevice } from "@/lib/devices";
 import type { PhotoMeta } from "@/lib/exif";
@@ -389,5 +390,66 @@ describe("dark scenes", () => {
     expect(check(toRgba(clouds)).some((i) => i.kind === "dark")).toBe(false);
     // Without the glowing clouds the same frame is just underexposed.
     expect(check(toRgba(sunset)).some((i) => i.kind === "dark")).toBe(true);
+  });
+});
+
+describe("faces", () => {
+  const sharp = toRgba(pebbles());
+  const box = { x: 200, y: 100, w: 200, h: 240 };
+
+  it("scores a sharp face high and a soft one low", () => {
+    const crisp = faceDetail(sharp, W, H, box)!;
+    const soft = faceDetail(toRgba(gaussianBlur(pebbles(), 1.5)), W, H, box)!;
+    const moved = faceDetail(toRgba(motionBlur(pebbles(), 7)), W, H, box)!;
+    expect(crisp).toBeGreaterThan(0.75);
+    expect(soft).toBeLessThan(0.55);
+    expect(moved).toBeLessThan(0.75);
+  });
+
+  it("doesn't judge faces too small to see, or with nothing in them", () => {
+    expect(faceDetail(sharp, W, H, { x: 10, y: 10, w: 60, h: 70 })).toBeNull();
+    expect(faceDetail(new Uint8ClampedArray(W * H * 4).fill(128), W, H, box)).toBeNull();
+  });
+
+  const face = (detail: number, width = 0.3, score = 0.9): FaceStats => ({ box: [0.3, 0.2, width, 0.4], score, detail });
+  const withFaces = (faces: FaceStats[], meta: PhotoMeta = camera, rgba = toRgba(scene())) =>
+    findIssues({ ...measure(rgba, W, H), faces }, meta);
+
+  it("says focus missed when the face is soft but the rest is sharp", () => {
+    expect(withFaces([face(1.1)])).toEqual([]);
+    const [issue] = withFaces([face(0.65)]);
+    expect(issue).toMatchObject({ kind: "focus", severity: "small", title: "Face a bit soft" });
+    expect(issue.why).toContain("focus landed on something else");
+    expect(issue.area.length).toBeGreaterThan(0);
+    expect(withFaces([face(0.4)])[0]).toMatchObject({ kind: "focus", severity: "big", title: "Face out of focus" });
+  });
+
+  it("blames movement for a soft face at a slow shutter or in Night mode", () => {
+    const [slow] = withFaces([face(0.65)], { ...camera, exposureTime: 1 / 5 });
+    expect(slow).toMatchObject({ kind: "shake", title: "Face a bit blurred" });
+    expect(slow.why).toContain("At 1/5s the person or the camera moved.");
+    const iphone = { ...camera, device: identifyDevice("Apple", "iPhone 18 Pro"), exposureTime: 1 / 2, fNumber: 1.8 };
+    const [night] = withFaces([face(0.65)], iphone);
+    expect(night.kind).toBe("shake");
+    expect(night.why).toContain("Night mode");
+  });
+
+  it("goes by the sharpest main face, and ignores small or doubtful ones", () => {
+    // Two people side by side: one sharp is enough.
+    expect(withFaces([face(0.6), face(1.0, 0.25)])).toEqual([]);
+    // A soft face far behind a sharp main subject is fine; so is one the finder isn't sure is a face.
+    expect(withFaces([face(1.0), face(0.4, 0.1)])).toEqual([]);
+    expect(withFaces([face(0.4, 0.3, 0.5)])).toEqual([]);
+  });
+
+  it("makes an already blurry photo's verdict stronger when faces are badly blurred too", () => {
+    // Like IMG_2691 and IMG_2692: shaken Night mode selfies the photo-wide check calls a bit blurry.
+    const iphone = { ...camera, device: identifyDevice("Apple", "iPhone 18 Pro"), exposureTime: 1 / 4, fNumber: 1.8 };
+    const blurry = toRgba(gaussianBlur(scene(), 0.5));
+    const before = withFaces([], iphone, blurry);
+    const [after] = withFaces([face(0.45)], iphone, blurry);
+    expect(kinds(before)).toEqual(["shake:small"]);
+    expect(after).toMatchObject({ kind: "shake", severity: "big", title: "Blurry" });
+    expect(after.why).toContain("Faces are blurred too.");
   });
 });

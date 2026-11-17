@@ -1,3 +1,5 @@
+import type { FaceStats } from "./faces";
+
 /**
  * Pixel measurements behind the photo checks. Pure functions over RGBA bytes so they run the same
  * in the browser (canvas ImageData) and in tests.
@@ -56,10 +58,13 @@ export type ImageStats = {
   smear: number;
   /** Tiles with enough detail to judge sharpness. */
   detailTiles: number;
+  /** Faces in the photo and how sharp each is. Missing when faces weren't looked for. */
+  faces?: FaceStats[];
 };
 
 /** Bump when measure() changes, so saved photos are measured again with the new version. */
-export const MEASURE_VERSION = 4;
+// 5 is skipped so this and the Night mode light streaks change (also 5) can merge in either order.
+export const MEASURE_VERSION = 6;
 
 const CLIP_LEVEL = 252;
 const CRUSH_LEVEL = 12;

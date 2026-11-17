@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MediaPipe engine, copied from node_modules by scripts/copy-mediapipe.mjs
+/public/mediapipe/vision_wasm_internal.*
