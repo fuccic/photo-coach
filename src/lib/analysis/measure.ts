@@ -1,3 +1,5 @@
+import type { FaceStats } from "./faces";
+
 /**
  * Pixel measurements behind the photo checks. Pure functions over RGBA bytes so they run the same
  * in the browser (canvas ImageData) and in tests.
@@ -60,10 +62,12 @@ export type ImageStats = {
   lights?: number;
   /** 0 when the lights are dots or point every way, towards 1 when all streak the same way (shake). */
   lightStreak?: number;
+  /** Faces in the photo and how sharp each is. Missing when faces weren't looked for. */
+  faces?: FaceStats[];
 };
 
 /** Bump when measure() changes, so saved photos are measured again with the new version. */
-export const MEASURE_VERSION = 5;
+export const MEASURE_VERSION = 6;
 
 import { measureLights } from "./lights";
 

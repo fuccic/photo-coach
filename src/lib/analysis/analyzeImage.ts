@@ -1,3 +1,5 @@
+import { detectFaces } from "./detectFaces";
+import { faceDetail } from "./faces";
 import { measure, type ImageStats } from "./measure";
 
 /** Long edge the photo is measured at: about what a screen shows when the whole photo fits. */
@@ -19,7 +21,14 @@ export async function analyzeImage(url: string): Promise<ImageStats | null> {
     if (!ctx) return null;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(img, 0, 0, width, height);
-    return measure(ctx.getImageData(0, 0, width, height).data, width, height);
+    const { data } = ctx.getImageData(0, 0, width, height);
+    const stats = measure(data, width, height);
+    stats.faces = (await detectFaces(canvas)).map((f) => ({
+      box: [f.x / width, f.y / height, f.w / width, f.h / height],
+      score: f.score,
+      detail: faceDetail(data, width, height, f),
+    }));
+    return stats;
   } catch {
     return null;
   }

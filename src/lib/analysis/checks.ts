@@ -1,7 +1,7 @@
 import { equivalentFocal, isStabilized } from "../devices";
 import type { PhotoMeta } from "../exif";
 import { formatAperture, formatExposureComp, formatIso, formatShutter } from "../format";
-import type { ImageStats } from "./measure";
+import { GRID, type ImageStats } from "./measure";
 
 export type IssueKind = "dark" | "bright" | "shake" | "focus" | "grain";
 export type Severity = "big" | "small";
@@ -42,13 +42,20 @@ const GRAIN = { big: 4.5, small: 2.5, minIso: 800 };
  * dim flash group shots that really were too dark stay under `lit`.
  */
 const SCENE = { crushed: 0.2, lit: 0.003, vivid: 0.03, blown: 0.0005, blownBig: 0.002 };
+/**
+ * Face detail (see faceDetail): sharp faces scored 0.76 to 2.2 on the Nov 2026 test photos; faces
+ * that moved in Night mode or were caught at a slow shutter 0.4 to 0.71.
+ */
+const FACE = { small: 0.75, big: 0.55, minScore: 0.7 };
+/** Phone shutter speeds this slow or slower let a person's movement show. */
+const PHONE_SLOW = 1 / 30;
 /** Phone exposures this long are almost always Night mode. */
 const NIGHT_MODE = 1 / 4;
 
 const ORDER: IssueKind[] = ["dark", "bright", "shake", "focus", "grain"];
 
 export function findIssues(stats: ImageStats, meta?: PhotoMeta): Issue[] {
-  const issues = [dark(stats, meta), bright(stats, meta), blur(stats, meta), grain(stats, meta)].filter(
+  const issues = [dark(stats, meta), bright(stats, meta), faceBlur(stats, meta, blur(stats, meta)), grain(stats, meta)].filter(
     (i): i is Issue => i !== undefined,
   );
   // Grain is mostly a side effect of the light; say so when both show up.
@@ -190,6 +197,54 @@ function blur(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   };
 }
 
+/**
+ * The people in a photo have to be sharp even when the rest is. Judges the main faces (the biggest,
+ * and any at least half its width) and goes by the sharpest of them: one blurred face in the
+ * background of a sharp portrait is fine. `photoBlur` is the photo-wide blur check's verdict.
+ */
+function faceBlur(s: ImageStats, meta: PhotoMeta | undefined, photoBlur: Issue | undefined): Issue | undefined {
+  const faces = (s.faces ?? []).filter((f) => f.score >= FACE.minScore && f.detail !== null);
+  if (!faces.length) return photoBlur;
+  const widest = Math.max(...faces.map((f) => f.box[2]));
+  const main = faces.filter((f) => f.box[2] >= widest / 2);
+  const detail = Math.max(...main.map((f) => f.detail ?? 0));
+  if (detail >= FACE.small) return photoBlur;
+  const big = detail < FACE.big;
+  const area = [...new Set(main.flatMap((f) => tilesUnder(s, f.box)))];
+
+  // The whole photo is already blurry: the faces confirm it, and say how badly.
+  if (photoBlur) {
+    const upgrade = big && photoBlur.severity === "small";
+    return {
+      ...photoBlur,
+      severity: big ? "big" : photoBlur.severity,
+      title: upgrade ? (photoBlur.kind === "shake" ? "Blurry" : "Out of focus") : photoBlur.title,
+      why: `${photoBlur.why} Faces are blurred too.`,
+      area: [...new Set([...photoBlur.area, ...area])],
+    };
+  }
+
+  const phone = meta?.device?.kind === "phone";
+  const t = meta?.exposureTime;
+  const moved = phone ? t !== undefined && t >= PHONE_SLOW : slowShutter(meta) === true;
+  const shutter = formatShutter(t);
+  const nightLong = phone && t !== undefined && t >= NIGHT_MODE;
+  const why = [big ? "The face is blurred." : "The face is a little soft."];
+  if (moved) {
+    if (nightLong) why.push("Night mode keeps taking the photo for a second or more, and the person moved.");
+    else if (shutter) why.push(`At ${shutter} the person or the camera moved.`);
+  } else if ((s.sharpness ?? 0) >= SHARP.smeared) {
+    why.push("Other parts of the photo are sharp, so focus landed on something else.");
+  }
+  return {
+    kind: moved ? "shake" : "focus",
+    severity: big ? "big" : "small",
+    title: moved ? (big ? "Face blurred" : "Face a bit blurred") : big ? "Face out of focus" : "Face a bit soft",
+    why: why.join(" "),
+    area,
+  };
+}
+
 function grain(s: ImageStats, meta?: PhotoMeta): Issue | undefined {
   if (s.noise < GRAIN.small) return undefined;
   // Low ISO photos aren't grainy: busy texture (grass, fur, crowds) is what fooled the estimate.
@@ -229,6 +284,18 @@ function slowShutter(meta?: PhotoMeta): boolean | undefined {
 function focalText(meta?: PhotoMeta): string {
   const focal = meta?.focalLength35 ?? (meta?.device?.kind === "camera" ? meta.focalLength : undefined);
   return focal ? ` at ${Math.round(focal)}mm` : "";
+}
+
+/** Tiles a box (shares of width and height, see FaceStats) covers. */
+function tilesUnder(s: ImageStats, box: [number, number, number, number]): number[] {
+  const size = Math.ceil(Math.max(s.width, s.height) / GRID);
+  const c0 = Math.floor((box[0] * s.width) / size);
+  const r0 = Math.floor((box[1] * s.height) / size);
+  const c1 = Math.min(s.cols - 1, Math.floor(((box[0] + box[2]) * s.width) / size));
+  const r1 = Math.min(s.rows - 1, Math.floor(((box[1] + box[3]) * s.height) / size));
+  const out: number[] = [];
+  for (let r = Math.max(0, r0); r <= r1; r++) for (let c = Math.max(0, c0); c <= c1; c++) out.push(r * s.cols + c);
+  return out;
 }
 
 function tilesWhere(s: ImageStats, test: (t: ImageStats["tiles"][number]) => boolean): number[] {

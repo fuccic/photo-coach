@@ -37,7 +37,7 @@ No jargon tests, no theory first. You learn from the photo you just took.
 
 > Use the original file. Sending a photo through Messages, WhatsApp or social apps often strips its settings, and Photo Coach will say "No settings found". On iPhone, AirDrop it or export it with "All Photos Data" turned on.
 
-Your photos never leave your device. Nothing is uploaded and location data is never read.
+Your photos never leave your device. Nothing is uploaded and location data is never read. The face finder (Google's MediaPipe) runs in your browser too; it is downloaded once (about 15 MB) the first time you add a photo.
 
 ## The three settings that matter
 
@@ -61,7 +61,7 @@ A few rules of thumb to try:
 | Step | What you see | Status |
 |---|---|---|
 | Read settings | Shutter, aperture, ISO, lens and mode from each photo | ✅ Works now |
-| Spot problems | "Too dark", "Too bright", "A bit blurry", "Out of focus", "Grainy". Night shots of the moon, neon signs and sunsets aren't called too dark; a blown-out moon gets "Bright spot blown out" | ✅ Works now |
+| Spot problems | "Too dark", "Too bright", "A bit blurry", "Out of focus", "Grainy". Night shots of the moon, neon signs and sunsets aren't called too dark; a blown-out moon gets "Bright spot blown out". Faces are found and checked on their own, so a blurred person in a sharp room gets "Face a bit blurred" | ✅ Works now |
 | Suggest a fix | `ISO 100 → ISO 800`, with a "Why?" in one sentence. Fixes keep the brightness balanced, and flash photos get flash settings | ✅ Works now |
 | Show the buttons | Step-by-step on *your* camera: "Press ISO on the wheel, turn to 800" | ✅ Works now |
 | Track progress | Your most common mistakes over time | Later |
